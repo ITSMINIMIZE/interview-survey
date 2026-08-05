@@ -165,10 +165,29 @@ function makeTrip(hhId, mId, seq, isLast) {
   };
 }
 
+
+// กันสร้างข้อมูลของแบบสอบถามที่โครงการนี้ไม่ได้เปิดใช้ —
+// ลิงก์ในเครื่องมือโครงการซ่อนไว้แล้ว แต่เปิดหน้าตรงจาก URL ยังทำได้
+// ถ้าปล่อยผ่าน ข้อมูลจะถูกเขียนลงไปแล้ว Dashboard ไม่มีวันแสดง (ซ่อนฝั่งนั้นอยู่)
+async function guardApp(app, label) {
+  try {
+    const m = await Project.load(firebase.firestore());
+    const a = (m && m.apps) || {};
+    if (a[app] === false) {
+      goBtn.disabled = true;
+      log('⛔ โครงการ "' + (m.name || Project.id()) + '" ไม่ได้เปิดใช้แบบสอบถาม ' + label
+        + ' — สร้างข้อมูลไม่ได้ (ถ้าต้องการ ให้ไปเปิดที่ จัดการโครงการ ก่อน)', 'err');
+      return false;
+    }
+  } catch (_) { /* อ่านไม่ได้ → ไม่บล็อก ดีกว่าหยุดงานเพราะเน็ตสะดุด */ }
+  return true;
+}
+
 async function run() {
   goBtn.disabled = true;
   clearLog();
   log('🏘️ เริ่ม seed Home...', 'info');
+  if (!await guardApp('home', 'Home')) { goBtn.disabled = false; return; }
 
   let hhCount = 0, mCount = 0, tCount = 0, writes = 0;
   const CHUNK = 400;
