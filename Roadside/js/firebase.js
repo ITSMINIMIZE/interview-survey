@@ -89,10 +89,13 @@ const FB = {
   // คิวงานเองตอนเน็ตหลุด (promise ค้าง ส่งเมื่อออนไลน์) แล้ว badge อัปเดตเมื่อ server ack จริง
   _stData(st) { const { interviews, ...d } = st; return d; },
 
+  // projectId ติดไปกับทุก doc — collectionGroup ของ Dashboard ใช้ field นี้กรองโครงการ
+  // (collectionGroup มองข้ามโครงสร้าง path จึงต้องมี field บอกว่า doc นี้ของโครงการไหน)
+  // ⚠️ doc ที่ไม่มี projectId จะไม่ขึ้นในรายงานเลย — ห้ามถอดออก
   _pushDoc(ref, data) {
     if (!this.db) return;
     const syncedAt = new Date().toISOString();
-    ref.set({ ...data, _device: this.deviceId(), _syncedAt: syncedAt }, { merge: true })
+    ref.set({ ...data, projectId: Project.id(), _device: this.deviceId(), _syncedAt: syncedAt }, { merge: true })
       .then(() => {
         localStorage.setItem('_is_ri_last_sync', syncedAt);
         if (typeof App !== 'undefined' && App._refreshSyncBadge) App._refreshSyncBadge();
@@ -114,6 +117,7 @@ const FB = {
     if (supervisorName) sts = sts.filter(st => st.supervisorName === supervisorName);
     if (!sts.length) throw new Error('ไม่มีข้อมูลในเครื่อง');
     const device   = this.deviceId();
+    const pid      = Project.id();
     const syncedAt = new Date().toISOString();
     const isStaff  = !!supervisorName;
     const isAdmin  = !surveyorName && !supervisorName;
@@ -159,7 +163,7 @@ const FB = {
       // 1) เขียน station (admin ทั้งหมด · staff เฉพาะจุดของทีมตัวเอง)
       if (isAdmin || isStaff) {
         const { interviews, ...stData } = st;
-        addOp(stRef, { ...stData, _device: device, _syncedAt: syncedAt });
+        addOp(stRef, { ...stData, projectId: pid, _device: device, _syncedAt: syncedAt });
         stCount++;
       }
 
@@ -167,7 +171,7 @@ const FB = {
       for (const iv of (st.interviews || [])) {
         if (!isAdmin && !isStaff && iv.surveyorName !== surveyorName) continue;
         const ivRef = stRef.collection('interviews').doc(iv.id);
-        addOp(ivRef, { ...iv, _device: device, _syncedAt: syncedAt });
+        addOp(ivRef, { ...iv, projectId: pid, _device: device, _syncedAt: syncedAt });
         ivCount++;
       }
     }

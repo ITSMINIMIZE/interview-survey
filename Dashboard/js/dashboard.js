@@ -219,17 +219,64 @@ function reportProgress() {
 }
 
 async function pullHouseholds() {
-  // staff = ดึงเฉพาะทีมตัวเอง (ประหยัดค่าอ่านจริง — เดิมดึงทุกบ้าน + subcollection ต่อบ้าน)
+  const pid = Project.id();
+  // staff = ดึงเฉพาะทีมตัวเอง (ประหยัดค่าอ่านจริง)
   let q = Project.col(db, 'households');
   if (isStaff()) q = q.where('supervisorName', '==', ME.supervisorName);
   const snap = await q.get({ source: 'server' });
+  const byId = {};
   const households = snap.docs.map(d => {
     const x = d.data(); delete x._device; delete x._syncedAt;
-    x.members = []; return x;
+    x.members = []; byId[d.id] = x; return x;
   });
-
-  // members ของแต่ละ household (parallel)
   _progress.hh = households.length; reportProgress();
+  if (!households.length) return households;
+
+  // ⚡ ดึง members + trips ของทั้งโครงการด้วยคำขอละ 1 ครั้ง (collectionGroup)
+  // เดิมยิงทีละ doc = 1 + จำนวนบ้าน + จำนวนสมาชิก ครั้ง (วัดได้ 1,198 คำขอ ~5 วิ)
+  // ใช้ field projectId ที่ฝั่งเขียนติดไว้ให้ทุก doc เป็นตัวกรองโครงการ
+  let memSnap, tripSnap;
+  try {
+    [memSnap, tripSnap] = await Promise.all([
+      db.collectionGroup('members').where('projectId', '==', pid).get({ source: 'server' }),
+      db.collectionGroup('trips').where('projectId', '==', pid).get({ source: 'server' })
+    ]);
+  } catch (e) {
+    // ยังไม่ได้สร้าง index (failed-precondition) → ถอยไปใช้วิธีเดิมเพื่อให้ยังใช้งานได้
+    console.warn('[Dashboard] collectionGroup ใช้ไม่ได้ ใช้วิธีเดิมแทน:', e.code || e.message);
+    return pullHouseholdsNested(snap, households);
+  }
+
+  // collectionGroup ไม่บอกว่า doc อยู่ใต้ใคร → อ่านจาก path ของ doc เอง
+  const memByPath = {};
+  memSnap.docs.forEach(d => {
+    const hhId = d.ref.parent.parent.id;          // projects/{p}/households/{hhId}/members/{mId}
+    const hh = byId[hhId];
+    if (!hh) return;                              // staff: บ้านนอกทีมตัวเอง → ข้าม
+    const m = d.data(); delete m._device; delete m._syncedAt;
+    m.trips = [];
+    hh.members.push(m);
+    memByPath[d.ref.path] = m;
+  });
+  _progress.mem = Object.keys(memByPath).length; reportProgress();
+
+  tripSnap.docs.forEach(d => {
+    const m = memByPath[d.ref.parent.parent.path]; // .../members/{mId}/trips/{tId}
+    if (!m) return;
+    const t = d.data(); delete t._device; delete t._syncedAt;
+    m.trips.push(t);
+  });
+  _progress.trip = tripSnap.size; reportProgress();
+
+  households.forEach(hh => {
+    hh.members.sort((a, b) => (a.seq || 0) - (b.seq || 0));
+    hh.members.forEach(m => m.trips.sort((a, b) => (a.seq || 0) - (b.seq || 0)));
+  });
+  return households;
+}
+
+// วิธีเดิม (ยิงทีละ doc) — ใช้เป็นทางถอยเมื่อ collectionGroup ยังไม่พร้อม
+async function pullHouseholdsNested(snap, households) {
   const memSnaps = await Promise.all(
     snap.docs.map(d => d.ref.collection('members').get({ source: 'server' }))
   );
@@ -242,33 +289,28 @@ async function pullHouseholds() {
       memberRefs.push({ ref: md.ref, member: m });
     });
   });
-
-  // trips ของแต่ละ member (parallel)
   _progress.mem = memberRefs.length; reportProgress();
+
   const tripSnaps = await Promise.all(
     memberRefs.map(mr => mr.ref.collection('trips').get({ source: 'server' }))
   );
-  _progress.trip = tripSnaps.reduce((a, t) => a + t.size, 0); reportProgress();
   tripSnaps.forEach((tSnap, i) => {
     tSnap.docs.forEach(td => {
       const t = td.data(); delete t._device; delete t._syncedAt;
       memberRefs[i].member.trips.push(t);
     });
   });
+  _progress.trip = tripSnaps.reduce((a, t) => a + t.size, 0); reportProgress();
 
   households.forEach(hh => {
     hh.members.sort((a, b) => (a.seq || 0) - (b.seq || 0));
     hh.members.forEach(m => m.trips.sort((a, b) => (a.seq || 0) - (b.seq || 0)));
   });
-  // ตัดรายการที่ admin ลบออกจากระบบแล้ว (_deleted) ออกทุกระดับ — ครอบคลุมทุกแท็บในหน้าเดียว
-  return households.filter(hh => !hh._deleted).map(hh => {
-    hh.members = hh.members.filter(m => !m._deleted);
-    hh.members.forEach(m => { m.trips = m.trips.filter(t => !t._deleted); });
-    return hh;
-  });
+  return households;
 }
 
 async function pullRoadside() {
+  const pid = Project.id();
   let q = Project.col(db, 'roadside_stations');
   if (isStaff()) q = q.where('supervisorName', '==', ME.supervisorName);
   const stSnap = await q.get({ source: 'server' });
@@ -278,17 +320,31 @@ async function pullRoadside() {
     x.interviews = []; map[d.id] = x;
   });
   _progress.st = stSnap.size; reportProgress();
-  const ivSnaps = await Promise.all(
-    stSnap.docs.map(d => d.ref.collection('interviews').get({ source: 'server' }))
-  );
-  _progress.iv = ivSnaps.reduce((a, x) => a + x.size, 0); reportProgress();
-  ivSnaps.forEach((snap, i) => {
-    const stId = stSnap.docs[i].id;
-    snap.docs.forEach(d => {
-      const x = d.data(); delete x._device; delete x._syncedAt;
-      map[stId].interviews.push(x);
-    });
+  if (!stSnap.size) return [];
+
+  // ⚡ สัมภาษณ์ทั้งโครงการในคำขอเดียว (เดิมยิงทีละจุดสำรวจ)
+  let ivDocs;
+  try {
+    const ivSnap = await db.collectionGroup('interviews')
+                           .where('projectId', '==', pid).get({ source: 'server' });
+    ivDocs = ivSnap.docs;
+  } catch (e) {
+    // ยังไม่ได้สร้าง index → ถอยไปวิธีเดิม
+    console.warn('[Dashboard] collectionGroup(interviews) ใช้ไม่ได้ ใช้วิธีเดิมแทน:', e.code || e.message);
+    const snaps = await Promise.all(
+      stSnap.docs.map(d => d.ref.collection('interviews').get({ source: 'server' }))
+    );
+    ivDocs = snaps.flatMap(x => x.docs);
+  }
+  ivDocs.forEach(d => {
+    const stId = d.ref.parent.parent.id;   // .../roadside_stations/{stId}/interviews/{ivId}
+    if (!map[stId]) return;                // staff: จุดนอกทีมตัวเอง → ข้าม
+    const x = d.data(); delete x._device; delete x._syncedAt;
+    map[stId].interviews.push(x);
   });
+  _progress.iv = ivDocs.length; reportProgress();
+
+  Object.values(map).forEach(st => st.interviews.sort((a, b) => (a.seq || 0) - (b.seq || 0)));
   // ตัดรายการที่ admin ลบออกจากระบบแล้ว (_deleted) ออก
   return Object.values(map).filter(st => !st._deleted).map(st => {
     st.interviews = st.interviews.filter(iv => !iv._deleted);

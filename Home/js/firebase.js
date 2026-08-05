@@ -82,10 +82,13 @@ const FB = {
   _hhData(hh)    { const { members, ...d } = hh; return d; },
   _memberData(m) { const { trips, ...d }  = m;  return d; },
 
+  // projectId ติดไปกับทุก doc — collectionGroup ของ Dashboard ใช้ field นี้กรองโครงการ
+  // (collectionGroup มองข้ามโครงสร้าง path จึงต้องมี field บอกว่า doc นี้ของโครงการไหน)
+  // ⚠️ doc ที่ไม่มี projectId จะไม่ขึ้นในรายงานเลย — ห้ามถอดออก
   _pushDoc(ref, data) {
     if (!this.db) return;
     const syncedAt = new Date().toISOString();
-    ref.set({ ...data, _device: this.deviceId(), _syncedAt: syncedAt }, { merge: true })
+    ref.set({ ...data, projectId: Project.id(), _device: this.deviceId(), _syncedAt: syncedAt }, { merge: true })
       .then(() => {
         localStorage.setItem('_is_hi_last_sync', syncedAt);
         if (typeof App !== 'undefined' && App._refreshSyncBadge) App._refreshSyncBadge();
@@ -108,6 +111,7 @@ const FB = {
     if (!hhs.length) throw new Error('ไม่มีข้อมูลที่จะ sync');
 
     const device   = this.deviceId();
+    const pid      = Project.id();
     const syncedAt = new Date().toISOString();
     const CHUNK    = 400;
 
@@ -127,18 +131,18 @@ const FB = {
       const hhRef = this._col().doc(hh.id);
       // เขียน household เฉพาะ field ของมัน (ไม่รวม members ใน array)
       const { members, ...hhData } = hh;
-      addOp(hhRef, { ...hhData, _device: device, _syncedAt: syncedAt });
+      addOp(hhRef, { ...hhData, projectId: pid, _device: device, _syncedAt: syncedAt });
       hhCount++;
 
       for (const m of (members || [])) {
         const mRef = hhRef.collection('members').doc(m.id);
         const { trips, ...mData } = m;
-        addOp(mRef, { ...mData, _device: device, _syncedAt: syncedAt });
+        addOp(mRef, { ...mData, projectId: pid, _device: device, _syncedAt: syncedAt });
         mCount++;
 
         for (const t of (trips || [])) {
           const tRef = mRef.collection('trips').doc(t.id);
-          addOp(tRef, { ...t, _device: device, _syncedAt: syncedAt });
+          addOp(tRef, { ...t, projectId: pid, _device: device, _syncedAt: syncedAt });
           tCount++;
         }
       }

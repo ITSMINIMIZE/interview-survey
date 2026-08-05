@@ -184,7 +184,7 @@ async function run() {
       surveyorName: 'admin', supervisorName: 'admin',
       createdAt: new Date().toISOString()
     };
-    await Project.col(db,'roadside_stations').doc(st.id).set(stData, { merge: true });
+    await Project.col(db,'roadside_stations').doc(st.id).set({ ...stData, projectId: Project.id() }, { merge: true });
     stations++; writes++;
     cStations.textContent = stations;
     cWrites.textContent = writes;
@@ -202,7 +202,7 @@ async function run() {
         const min = total % 60;
         const iv = makeInterview(st.id, st, sv, seq++, hr, min);
         const ref = Project.col(db,'roadside_stations').doc(st.id).collection('interviews').doc(iv.id);
-        batch.set(ref, iv, { merge: true });
+        batch.set(ref, { ...iv, projectId: Project.id() }, { merge: true });
         ops++;
         if (ops >= CHUNK) { await batch.commit(); batch = db.batch(); ops = 0; }
         interviews++; writes++;
@@ -214,7 +214,7 @@ async function run() {
         const min = total % 60;
         const iv = makeInterview(st.id, st, sv, seq++, hr, min);
         const ref = Project.col(db,'roadside_stations').doc(st.id).collection('interviews').doc(iv.id);
-        batch.set(ref, iv, { merge: true });
+        batch.set(ref, { ...iv, projectId: Project.id() }, { merge: true });
         ops++;
         if (ops >= CHUNK) { await batch.commit(); batch = db.batch(); ops = 0; }
         interviews++; writes++;

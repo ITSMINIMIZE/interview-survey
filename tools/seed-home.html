@@ -216,7 +216,7 @@ async function run() {
         createdAt: new Date().toISOString()
       };
       const hhRef = Project.col(db,'households').doc(hhId);
-      batch.set(hhRef, hh, { merge: true });
+      batch.set(hhRef, { ...hh, projectId: Project.id() }, { merge: true });
       ops++; writes++; hhCount++;
 
       // 1-4 members
@@ -224,7 +224,7 @@ async function run() {
       for (let mi = 0; mi < numM; mi++) {
         const m = makeMember(hhId, mi+1);
         const mRef = hhRef.collection('members').doc(m.id);
-        batch.set(mRef, m, { merge: true });
+        batch.set(mRef, { ...m, projectId: Project.id() }, { merge: true });
         ops++; writes++; mCount++;
 
         // 1-4 trips (เฉลี่ย 3)
@@ -232,7 +232,7 @@ async function run() {
         for (let ti = 0; ti < numT; ti++) {
           const t = makeTrip(hhId, m.id, ti+1, ti===numT-1);
           const tRef = mRef.collection('trips').doc(t.id);
-          batch.set(tRef, t, { merge: true });
+          batch.set(tRef, { ...t, projectId: Project.id() }, { merge: true });
           ops++; writes++; tCount++;
         }
 

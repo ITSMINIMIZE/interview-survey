@@ -429,6 +429,7 @@ const ProjectTools = {
       'พิกัดไม่ถูกต้อง — ต้องเป็น "ละติจูด, ลองจิจูด" และอยู่ในประเทศไทย (เช่น 16.0590, 102.7313)', false);
 
     const data = {
+      projectId: Project.id(),   // collectionGroup ของ Dashboard ใช้ field นี้กรอง — ห้ามขาด
       stationName: name, supervisorName: sup, road, direction: dir, coordinates: co,
       subdistrict: this._g('ptStSub').value.trim(),
       district:    this._g('ptStDist').value.trim(),
