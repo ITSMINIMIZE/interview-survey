@@ -49,7 +49,14 @@ const App = {
     if (typeof firebase !== 'undefined' && firebase.apps?.length) {
       FB.onAuthStateChanged(async user => {
         // รายชื่อผู้ควบคุมสำหรับ dropdown — ต้องมี token ก่อนถึงอ่าน config ได้ (anonymous ก็พอ)
-        if (user) Supervisors.load(FB.db).catch(() => {});
+        if (user) {
+          Supervisors.load(FB.db).catch(() => {});
+          // ตัวเลือกของแบบสอบถามอาจถูกปรับตามโครงการ (เช่น ทช. ใช้ประเภทรถคนละชุด)
+          // โหลดแล้ว render ใหม่ ถ้าฟอร์มถูกวาดไปก่อนด้วยค่า default
+          Project.loadOptions(FB.db, 'roadside', OPT)
+            .then(d => { if (d && this.render) this.render(); })
+            .catch(() => {});
+        }
         if (this._role || this._bootHandled) return;
         // anonymous = ผู้สำรวจ/ยังไม่ login → ไปหน้าเลือกบทบาท
         if (!user || user.isAnonymous) { this._showLoginGate(); return; }

@@ -129,6 +129,56 @@ const Project = {
     return false;
   },
 
+  // ---------- ตัวเลือกของแบบสอบถาม (ต่างกันได้ตามโครงการ) ----------
+  //
+  //   projects/{pid}/config/options = {
+  //     roadside: { vehicleTypes[], purposeCards[], locationTypeCards[] },
+  //     home:     { purposeCards[], locationTypeCards[] }
+  //   }
+  //
+  // ⚠️ เก็บแยกตามแอป เพราะ OPT ของ 2 แอปใช้ชื่อ key เดียวกันแต่คนละโครงสร้าง
+  //    (Roadside มี group แบ่งกลุ่มรถ · Home ไม่มี) — ปนกันแล้วฟอร์มพัง
+  //
+  // ⚠️ purpose/locationType เก็บเป็นรูป "การ์ด" (มีไอคอน) แล้วค่อยแตกเป็น list ธรรมดา
+  //    เพราะฟอร์มปกติอ่านจาก OPT.purpose แต่หน้า wizard อ่านจาก OPT.purposeCards
+  //    ถ้าเก็บแยกกัน 2 ที่ วันหนึ่งจะไม่ตรงกันแน่นอน
+  OPTIONS_KEY: '_is_options',
+  _optKey() { return this.OPTIONS_KEY + '__' + (this.id() || 'none'); },
+
+  // อ่านจาก Firestore แล้ว merge ลง OPT ของแอป · ออฟไลน์ใช้ที่ cache ไว้
+  // ไม่มี override = ใช้ค่า default ในโค้ดตามเดิม (โครงการผังเมืองไม่ต้องตั้งอะไร)
+  async loadOptions(db, app, OPT) {
+    let all = null;
+    try {
+      const snap = await this.cfg(db, 'options').get();
+      all = snap.exists ? snap.data() : null;
+      if (all) { try { localStorage.setItem(this._optKey(), JSON.stringify(all)); } catch (_) {} }
+    } catch (_) {
+      try { all = JSON.parse(localStorage.getItem(this._optKey()) || 'null'); } catch (_) {}
+    }
+    if (!all) {
+      try { all = JSON.parse(localStorage.getItem(this._optKey()) || 'null'); } catch (_) {}
+    }
+    const d = all && all[app];
+    if (!d || !OPT) return null;
+    this.applyOptions(d, OPT);
+    return d;
+  },
+
+  applyOptions(d, OPT) {
+    if (Array.isArray(d.vehicleTypes) && d.vehicleTypes.length) {
+      OPT.vehicleTypes = d.vehicleTypes;
+    }
+    if (Array.isArray(d.purposeCards) && d.purposeCards.length) {
+      OPT.purposeCards = d.purposeCards;
+      OPT.purpose      = d.purposeCards.map(c => c.val);      // ต้องมาจากที่เดียวกันเสมอ
+    }
+    if (Array.isArray(d.locationTypeCards) && d.locationTypeCards.length) {
+      OPT.locationTypeCards = d.locationTypeCards;
+      OPT.locationType      = d.locationTypeCards.map(c => c.val);
+    }
+  },
+
   // ต่อ ?project= ให้ลิงก์ (ใช้ตอนสร้างลิงก์ข้ามแอป)
   withId(url) {
     const id = this.id();

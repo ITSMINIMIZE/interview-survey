@@ -41,6 +41,7 @@ const ProjectTools = {
         <div style="display:flex;gap:8px;margin:18px 0;flex-wrap:wrap" id="ptTabs">
           <button data-tab="members"  class="pt-tab">👔 ผู้ควบคุม</button>
           <button data-tab="stations" class="pt-tab">🚦 จุดสำรวจ</button>
+          <button data-tab="forms"    class="pt-tab">📝 ตัวเลือกแบบสอบถาม</button>
           <button data-tab="more"     class="pt-tab">🗺 โซน &amp; ข้อมูลทดสอบ</button>
         </div>
 
@@ -116,6 +117,7 @@ const ProjectTools = {
       b.classList.toggle('on', b.dataset.tab === this._tab));
     if (this._tab === 'members')  return this._renderMembers();
     if (this._tab === 'stations') return this._renderStations();
+    if (this._tab === 'forms')    return this._renderForms();
     return this._renderMore();
   },
 
@@ -472,6 +474,164 @@ const ProjectTools = {
       }, { merge: true });
       await this._loadStations();
     } catch (e) { this._msg('ptStMsg', 'ลบไม่สำเร็จ: ' + e.message, false); }
+  },
+
+
+  // ═══════════ ตัวเลือกแบบสอบถาม ═══════════
+  //
+  // ⚠️ ค่าเริ่มต้นข้างล่างคัดลอกมาจาก {Roadside,Home}/js/data.js (ตัวแปร OPT)
+  //    Dashboard ไม่ได้โหลด data.js ของแอปสำรวจ จึงต้องมีสำเนาไว้ให้ผู้ใช้เห็นตอนแก้
+  //    ถ้าแก้ค่าเริ่มต้นใน data.js ต้องมาแก้ที่นี่ด้วย
+  DEFAULTS: {
+    roadside: {
+      vehicleTypes: [
+        { key:'bicycle2',   label:'จักรยาน 2 ล้อ',                          icon:'🚲', group:'personal' },
+        { key:'bicycle3',   label:'จักรยาน 3 ล้อ',                          icon:'🚲', group:'personal' },
+        { key:'motorcycle', label:'รถจักรยานยนต์',                          icon:'🛵', group:'personal' },
+        { key:'tuk3',       label:'รถสามล้อเครื่อง',                        icon:'🛺', group:'personal' },
+        { key:'car',        label:'รถยนต์นั่งส่วนบุคคล',                    icon:'🚗', group:'personal' },
+        { key:'bus_sm',     label:'รถโดยสารขนาดเล็ก–กลาง',                 icon:'🚐', group:'bus' },
+        { key:'bus_lg',     label:'รถโดยสารขนาดใหญ่',                       icon:'🚌', group:'bus' },
+        { key:'truck4',     label:'รถบรรทุกขนาดเล็ก (4 ล้อ)',              icon:'🚚', group:'truck' },
+        { key:'truck6',     label:'รถบรรทุกขนาดกลางขึ้นไป (6 ล้อขึ้นไป)', icon:'🚛', group:'truck' }
+      ],
+      purposeCards: [
+        { val:'กลับบ้าน', icon:'🏠' }, { val:'ไปทำงาน', icon:'💼' },
+        { val:'ไปเรียนหนังสือ', icon:'📚' }, { val:'ติดต่อราชการต่าง ๆ / ธุรกิจ', icon:'🏛️' },
+        { val:'ไปโรงพยาบาล / คลินิก / อนามัย', icon:'🏥' }, { val:'รับส่งคน หรือ สินค้า', icon:'📦' },
+        { val:'ช้อปปิ้ง / ซื้อของใช้ต่าง ๆ', icon:'🛒' }, { val:'รับประทานอาหาร', icon:'🍽️' },
+        { val:'ท่องเที่ยว / พักผ่อน / ออกกำลังกาย', icon:'🏖️' },
+        { val:'ทำกิจกรรมทางศาสนา', icon:'⛩️' }, { val:'อื่น ๆ', icon:'❓' }
+      ],
+      locationTypeCards: [
+        { val:'ที่พัก / บ้านของตัวเอง', icon:'🏠', short:'บ้านตัวเอง' },
+        { val:'โรงเรียน / สถานศึกษา', icon:'🏫', short:'โรงเรียน' },
+        { val:'สถานที่ราชการ / โรงพยาบาล', icon:'🏥', short:'ราชการ/รพ.' },
+        { val:'บริษัทเอกชน / ห้าง / ธนาคาร', icon:'🏢', short:'บริษัท/ห้าง' },
+        { val:'ตลาด / ร้านค้า / ร้านอาหาร / ที่รับจ้างหรือบริการต่าง ๆ', icon:'🛒', short:'ตลาด/ร้านค้า' },
+        { val:'โรงงาน / โกดัง / คลังสินค้า', icon:'🏭', short:'โรงงาน/โกดัง' },
+        { val:'ที่ทำงานเกษตรกรรม / สวน / ไร่ / นา / กสิกรรม', icon:'🌾', short:'เกษตร/ไร่นา' },
+        { val:'สถานที่ท่องเที่ยว / ออกกำลังกาย', icon:'🏖️', short:'ท่องเที่ยว' },
+        { val:'วัด / โบสถ์ / มัสยิด / ศาลเจ้า', icon:'⛩️', short:'ศาสนสถาน' },
+        { val:'บ้านที่ไม่ใช่ของตัวเอง', icon:'🏘️', short:'บ้านผู้อื่น' },
+        { val:'อื่น ๆ', icon:'📍', short:'อื่น ๆ' }
+      ]
+    }
+  },
+
+  _formsApp: 'roadside',
+  _optionsDoc: null,
+
+  async _renderForms() {
+    const app = this._formsApp;
+    this._g('ptBody').innerHTML = `
+      <div class="pt-hint">
+        แก้ตัวเลือกที่ผู้สำรวจเห็นในแบบสอบถามของ<b>โครงการนี้เท่านั้น</b> —
+        โครงการอื่นไม่กระทบ · ไม่แก้ = ใช้ชุดมาตรฐาน (ผังเมือง)<br>
+        ใช้ตอนโครงการมีชุดตัวเลือกต่างออกไป เช่น <b>ทางหลวงชนบท</b> ที่ประเภทรถและ
+        วัตถุประสงค์ไม่เหมือนงานผังเมือง
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="pt-tab ${app==='roadside'?'on':''}" data-fapp="roadside">🚦 Roadside</button>
+        <button class="pt-tab ${app==='home'?'on':''}" data-fapp="home">🏠 Home</button>
+      </div>
+      <div id="ptFormsBody"><div class="pt-empty">กำลังโหลด...</div></div>`;
+    this._g('ptBody').querySelectorAll('[data-fapp]').forEach(b =>
+      b.onclick = () => { this._formsApp = b.dataset.fapp; this._renderForms(); });
+
+    try {
+      const snap = await Project.cfg(db, 'options').get();
+      this._optionsDoc = snap.exists ? snap.data() : {};
+    } catch (_) { this._optionsDoc = {}; }
+    this._renderFormsBody();
+  },
+
+  // แปลงระหว่าง object list ↔ ข้อความ (แก้ในกล่องข้อความ ง่ายกว่าและจัดลำดับ/เพิ่ม/ลบได้ในที)
+  _toText(kind, arr) {
+    if (kind === 'vehicleTypes')      return arr.map(v => [v.key, v.label, v.icon, v.group||''].join(' | ')).join('\n');
+    if (kind === 'locationTypeCards') return arr.map(v => [v.icon, v.val, v.short||''].join(' | ')).join('\n');
+    return arr.map(v => [v.icon, v.val].join(' | ')).join('\n');
+  },
+  _fromText(kind, text) {
+    const rows = text.split('\n').map(l => l.trim()).filter(Boolean).map(l => l.split('|').map(x => x.trim()));
+    if (kind === 'vehicleTypes')
+      return rows.filter(r => r[0] && r[1]).map(r => ({ key:r[0], label:r[1], icon:r[2]||'🚘', group:r[3]||'personal' }));
+    if (kind === 'locationTypeCards')
+      return rows.filter(r => r[1]).map(r => ({ icon:r[0]||'📍', val:r[1], short:r[2]||r[1] }));
+    return rows.filter(r => r[1]).map(r => ({ icon:r[0]||'❓', val:r[1] }));
+  },
+
+  _renderFormsBody() {
+    const app = this._formsApp;
+    const cur = (this._optionsDoc && this._optionsDoc[app]) || {};
+    const def = this.DEFAULTS[app] || this.DEFAULTS.roadside;
+    const box = (kind, title, hint, show) => show ? `
+      <div class="pt-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+          <div style="font-size:14px;font-weight:700;color:#f5f5f7">${title}
+            ${cur[kind] ? '<span style="font-size:11px;font-weight:600;color:#ffd60a;background:rgba(255,159,10,.15);border:1px solid rgba(255,159,10,.3);padding:2px 9px;border-radius:99px;margin-left:7px">แก้ไว้แล้ว</span>'
+                        : '<span style="font-size:11px;color:#8e8e93;margin-left:7px">ใช้ค่ามาตรฐาน</span>'}
+          </div>
+          <button class="pt-btn-g" data-reset="${kind}">คืนค่ามาตรฐาน</button>
+        </div>
+        <div style="font-size:11.5px;color:#8e8e93;line-height:1.7;margin-bottom:8px">${hint}</div>
+        <textarea id="ptOpt_${kind}" class="pt-in" style="min-height:150px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.9;resize:vertical">${this._esc(this._toText(kind, cur[kind] || def[kind] || []))}</textarea>
+      </div>` : '';
+
+    this._g('ptFormsBody').innerHTML =
+      box('vehicleTypes', 'ประเภทรถ',
+          'บรรทัดละ 1 อย่าง · <b>รหัส | ชื่อที่แสดง | ไอคอน | กลุ่ม</b> — กลุ่มใช้ได้: personal, bus, truck (กลุ่ม truck จะถามเรื่องสินค้าต่อ)<br>⚠️ <b>รหัสห้ามเปลี่ยนหลังเก็บข้อมูลแล้ว</b> เพราะข้อมูลเดิมอ้างถึงรหัสนี้',
+          app === 'roadside') +
+      box('purposeCards', 'วัตถุประสงค์การเดินทาง',
+          'บรรทัดละ 1 อย่าง · <b>ไอคอน | ข้อความ</b>', true) +
+      box('locationTypeCards', 'ประเภทสถานที่ต้นทาง/ปลายทาง',
+          'บรรทัดละ 1 อย่าง · <b>ไอคอน | ข้อความ | ชื่อย่อ</b> (ชื่อย่อใช้บนการ์ดในหน้ากรอกเร็ว)', true) +
+      `<button class="pt-btn" id="ptOptSave">บันทึกตัวเลือก</button>
+       <div class="pt-msg" id="ptOptMsg"></div>
+       ${app === 'home' ? '<div class="pt-hint" style="margin-top:14px">หมายเหตุ: ประเภทรถของ Home แก้ที่นี่ไม่ได้ เพราะผูกกับกติกา "โหมดเดินทางไหนต้องมีรถประเภทนั้นในบ้าน" ถ้าต้องแก้ให้บอกผู้พัฒนา</div>' : ''}`;
+
+    this._g('ptOptSave').onclick = () => this._saveOptions();
+    this._g('ptFormsBody').querySelectorAll('[data-reset]').forEach(b =>
+      b.onclick = () => {
+        const k = b.dataset.reset;
+        this._g('ptOpt_' + k).value = this._toText(k, (this.DEFAULTS[app] || this.DEFAULTS.roadside)[k] || []);
+      });
+  },
+
+  async _saveOptions() {
+    const app = this._formsApp;
+    const def = this.DEFAULTS[app] || this.DEFAULTS.roadside;
+    const out = {};
+    for (const kind of ['vehicleTypes', 'purposeCards', 'locationTypeCards']) {
+      const el = this._g('ptOpt_' + kind);
+      if (!el) continue;
+      const arr = this._fromText(kind, el.value);
+      if (!arr.length) return this._msg('ptOptMsg', 'รายการ "' + kind + '" ว่าง — ต้องมีอย่างน้อย 1 บรรทัด', false);
+      // เหมือนค่ามาตรฐานเป๊ะ → ไม่ต้องเก็บ override (โครงการจะได้อัปเดตตามค่ามาตรฐานในอนาคต)
+      // เทียบผ่านรูปข้อความ ไม่ใช่ JSON ของ object — ลำดับ key ต่างกันไม่ควรนับว่าต่าง
+      const defText = this._toText(kind, def[kind] || []);
+      if (this._toText(kind, arr) !== defText) out[kind] = arr;
+    }
+    if (app === 'roadside' && out.vehicleTypes) {
+      const bad = out.vehicleTypes.filter(v => !['personal','bus','truck'].includes(v.group));
+      if (bad.length) return this._msg('ptOptMsg',
+        'กลุ่มต้องเป็น personal, bus หรือ truck เท่านั้น — ผิดที่: ' + bad.map(v=>v.key).join(', '), false);
+      const keys = out.vehicleTypes.map(v => v.key);
+      const dup = keys.filter((k,i) => keys.indexOf(k) !== i);
+      if (dup.length) return this._msg('ptOptMsg', 'รหัสประเภทรถซ้ำ: ' + [...new Set(dup)].join(', '), false);
+    }
+    try {
+      const doc = { ...(this._optionsDoc || {}) };
+      if (Object.keys(out).length) doc[app] = out; else delete doc[app];
+      doc.updatedAt = new Date().toISOString();
+      await Project.cfg(db, 'options').set(doc);
+      this._optionsDoc = doc;
+      const okText = Object.keys(out).length
+        ? '✅ บันทึกแล้ว — ผู้สำรวจจะเห็นชุดใหม่เมื่อเปิดแอปครั้งถัดไป'
+        : '✅ กลับไปใช้ชุดมาตรฐานทั้งหมดแล้ว';
+      this._renderFormsBody();          // วาดใหม่ก่อน (ล้าง ptOptMsg) แล้วค่อยแสดงผล
+      this._msg('ptOptMsg', okText, true);
+    } catch (e) { this._msg('ptOptMsg', 'บันทึกไม่สำเร็จ: ' + e.message, false); }
   },
 
   // ═══════════ โซน & ข้อมูลทดสอบ ═══════════
