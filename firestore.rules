@@ -3,15 +3,37 @@ rules_version = '2';
 // Firestore Security Rules — interview-survey
 // ก๊อปทั้งไฟล์นี้ไปวางใน Firebase Console → Firestore Database → Rules → Publish
 //
-// หลักการ (เหมือนระบบเดิม):
-//   - read/create/update เปิด: แอปผู้สำรวจเขียนโดยไม่ต้อง login (ใช้ anonymous auth)
+// 🔧 ตอนนี้ยังพัฒนาอยู่ → ใช้ firestore.rules.dev ไปก่อนได้
+//    ไฟล์นี้คือตัวที่ต้อง publish "ก่อนเก็บข้อมูลจริง"
+//
+// หลักการ:
+//   - read/create/update ของข้อมูลสำรวจเปิด: แอปผู้สำรวจเขียนโดยไม่ต้อง login (anonymous auth)
 //   - delete ปิดเกือบทั้งหมด: ลบได้เฉพาะ doc ที่ id มีคำว่า SEED (ให้ tools/cleanup-seed ลบ test data ได้)
-//   - config/ เขียนได้เฉพาะบัญชีที่ login แล้ว (admin)
+//   - users/ + config/ เขียนได้เฉพาะ admin (เข้มกว่าระบบเดิมที่ให้ทุกบัญชีที่ login เขียน config ได้
+//     ซึ่งรวมผู้สำรวจ anonymous → แก้ API key ของทั้งระบบได้)
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function isSeed(id) { return id.matches('.*SEED.*'); }
+
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ===== บัญชี/สิทธิ์ (js/auth-role.js, tools/auth-gate.js, tools/users.html) =====
+    // อ่าน doc ตัวเอง: บัญชีที่ login แล้วอ่านสิทธิ์ตัวเองได้ (auth-role.js ต้องใช้ตอน login)
+    // list ทั้ง collection + สร้าง/แก้/ลบ: admin เท่านั้น (tools/users.html)
+    //
+    // ⚠️ BOOTSTRAP: admin คนแรกสร้างผ่านหน้าเว็บไม่ได้ (ยังไม่มี admin ให้ isAdmin() ผ่าน)
+    //    ต้องสร้าง doc users/{uid} ใน Firebase Console เองครั้งเดียว — ดู docs/SETUP.md ข้อ 4
+    match /users/{uid} {
+      allow get:    if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow list:   if isAdmin();
+      allow write:  if isAdmin();
+    }
 
     // ===== Home Interview =====
     match /households/{hhId} {
@@ -52,10 +74,12 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // ===== config/app (API keys), users, supervisors, รอบเก็บข้อมูล =====
+    // ===== config/app (API keys) · supervisors · data_round · zones =====
+    // อ่านเปิด (แอปอ่าน key/รอบเก็บข้อมูล/ผังโซนโดยไม่ต้อง login)
+    // เขียนเฉพาะ admin — ทุกจุดที่เขียนอยู่ใน tools/ ซึ่ง gate ด้วย admin อยู่แล้ว
     match /config/{docId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
   }
 }

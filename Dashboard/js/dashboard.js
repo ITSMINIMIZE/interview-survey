@@ -2,12 +2,12 @@
 
 // ── FIREBASE CONFIG ───────────────────────────────────────────────────────────
 const FB_CFG = {
-  apiKey:            'PASTE_API_KEY',
-  authDomain:        'PASTE_PROJECT_ID.firebaseapp.com',
-  projectId:         'PASTE_PROJECT_ID',
-  storageBucket:     'PASTE_PROJECT_ID.firebasestorage.app',
-  messagingSenderId: 'PASTE_SENDER_ID',
-  appId:             'PASTE_APP_ID'
+  apiKey:            'AIzaSyB7uSMVYta28csoka_Kj160U1OuCFHvNWs',
+  authDomain:        'interview-survey.firebaseapp.com',
+  projectId:         'interview-survey',
+  storageBucket:     'interview-survey.firebasestorage.app',
+  messagingSenderId: '563577463134',
+  appId:             '1:563577463134:web:b55381c292cb5433b7afcf'
 };
 
 const CENTER = { lat: 16.0587, lon: 102.7355 }; // อ.บ้านไผ่ (fallback เมื่อไม่มีโซน)

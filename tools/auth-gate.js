@@ -9,12 +9,12 @@
   var EMAIL_DOMAIN = '@interview-survey.local';
   var ALLOW_BOOTSTRAP = !!window._AUTH_GATE_ALLOW_BOOTSTRAP;
   var CFG = {
-    apiKey:            'PASTE_API_KEY',
-    authDomain:        'PASTE_PROJECT_ID.firebaseapp.com',
-    projectId:         'PASTE_PROJECT_ID',
-    storageBucket:     'PASTE_PROJECT_ID.firebasestorage.app',
-    messagingSenderId: 'PASTE_SENDER_ID',
-    appId:             'PASTE_APP_ID'
+    apiKey:            'AIzaSyB7uSMVYta28csoka_Kj160U1OuCFHvNWs',
+    authDomain:        'interview-survey.firebaseapp.com',
+    projectId:         'interview-survey',
+    storageBucket:     'interview-survey.firebasestorage.app',
+    messagingSenderId: '563577463134',
+    appId:             '1:563577463134:web:b55381c292cb5433b7afcf'
   };
 
   var ov, statusEl;

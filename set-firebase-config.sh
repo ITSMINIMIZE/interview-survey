@@ -13,10 +13,10 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 # ======= แก้ 5 บรรทัดนี้ =======
-API_KEY="PASTE_API_KEY"
-PROJECT_ID="PASTE_PROJECT_ID"
-SENDER_ID="PASTE_SENDER_ID"
-APP_ID="PASTE_APP_ID"
+API_KEY="AIzaSyB7uSMVYta28csoka_Kj160U1OuCFHvNWs"
+PROJECT_ID="interview-survey"
+SENDER_ID="563577463134"
+APP_ID="1:563577463134:web:b55381c292cb5433b7afcf"
 # ==============================
 
 if [ "$API_KEY" = "PASTE_API_KEY" ]; then

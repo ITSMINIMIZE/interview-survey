@@ -48,7 +48,18 @@
 1. เมนูซ้าย → **Build → Firestore Database** → **Create database**
 2. เลือก **Production mode**
 3. Location: **asia-southeast1 (Singapore)** ← เร็วสุดสำหรับไทย · **เลือกแล้วเปลี่ยนไม่ได้**
-4. เสร็จแล้วไปแท็บ **Rules** → ลบของเดิมทิ้ง → ก๊อปเนื้อหาไฟล์ [`firestore.rules`](../firestore.rules) มาวางทั้งไฟล์ → **Publish**
+4. เสร็จแล้วไปแท็บ **Rules** → ลบของเดิมทิ้ง → วาง rules → **Publish**
+
+   มี 2 ไฟล์ให้เลือกตามช่วงงาน:
+
+   | ช่วง | ไฟล์ | ทำอะไร |
+   |---|---|---|
+   | 🔧 กำลังพัฒนา / ทดลองคนเดียว | [`firestore.rules.dev`](../firestore.rules.dev) | บัญชีที่ login แล้วทำได้ทุกอย่าง · **หมดอายุ 30 ก.ย. 2026 เอง** |
+   | 🚀 ก่อนเก็บข้อมูลจริง | [`firestore.rules`](../firestore.rules) | ตัวเต็ม — delete ปิด · `users/` + `config/` เขียนได้เฉพาะ admin |
+
+   > ⚠️ เว็บเป็น public บน GitHub Pages และ API key อยู่ในโค้ดฝั่ง client (ปกติของ Firebase)
+   > → ตอนใช้ dev rules ใครเจอ URL ก็เขียน/ลบ DB ได้ **ห้ามใช้ตอนมีข้อมูลจริง**
+   > วันหมดอายุคือตัวกันลืม พ้นวันนั้นระบบจะเขียนไม่ได้จนกว่าจะ publish `firestore.rules`
 
 **Authentication**
 1. เมนูซ้าย → **Build → Authentication** → **Get started**
@@ -94,13 +105,29 @@
 1. Firebase Console → **Authentication → Users → Add user**
 2. Email: ใส่**อีเมลจริง**ของคุณ (แนะนำ — กู้รหัสผ่านเองได้)
    หรือจะใช้ `admin@interview-survey.local` ก็ได้ แต่ส่งเมลกู้รหัสไม่ได้
-3. ตั้งรหัสผ่าน → **Add user**
-4. ต้องบันทึกบทบาทลง Firestore ด้วย ไม่งั้นเข้าได้แต่ไม่มีสิทธิ์ admin:
-   - **Firestore Database → Start collection** → Collection ID: `config`
-   - Document ID: `users`
-   - เพิ่ม field แบบ **map** ชื่อ `list` … *หรือ* ง่ายกว่าคือ **เปิดหน้า `tools/users.html` แล้วจัดการผ่าน UI** หลัง login สำเร็จครั้งแรก
+3. ตั้งรหัสผ่าน → **Add user** → **ก๊อป `User UID` ที่ได้เก็บไว้**
 
-   > โครงสร้าง users/roles ระบบเดิมอยู่ใน `tools/users.html` + `js/auth-role.js` — เปิด `tools/users.html` แล้วดูหน้าจอจะง่ายที่สุด
+4. บันทึกบทบาทลง Firestore ด้วย — ไม่งั้น login ได้แต่ไม่มีสิทธิ์ admin
+   (`js/auth-role.js` และ `tools/auth-gate.js` อ่านสิทธิ์จาก **`users/{uid}`**)
+
+   **admin คนแรกต้องสร้างใน Console เอง** — สร้างผ่าน `tools/users.html` ไม่ได้
+   เพราะกฎข้อ "เขียน users ได้เฉพาะ admin" ยังไม่มีใครผ่าน (ปัญหา bootstrap)
+
+   - **Firestore Database → Start collection** → Collection ID: **`users`**
+   - Document ID: **วาง User UID จากข้อ 3**
+   - ใส่ field:
+
+     | field | type | value |
+     |---|---|---|
+     | `role` | string | `admin` |
+     | `username` | string | ชื่อผู้ใช้ เช่น `admin` |
+     | `displayName` | string | ชื่อที่แสดง |
+     | `email` | string | อีเมลเดียวกับข้อ 2 |
+     | `disabled` | boolean | `false` |
+
+   - **Save**
+
+5. หลังจากนี้ login เข้า `tools/users.html` แล้วเพิ่ม/แก้/ลบบัญชีคนอื่นผ่าน UI ได้เลย
 
 ## 5. อัปเกรดเป็น Blaze + ตั้ง budget alert
 
@@ -156,11 +183,11 @@ open "/Users/cmmcbook/Desktop/Claude/New Interview/เปิด Server.command"
 ## ✅ เช็กลิสต์ก่อนใช้งานจริง
 
 - [ ] Firebase project ใหม่สร้างแล้ว · project ID ไม่ใช่ `banphai-survey`
-- [ ] Firestore สร้างแล้ว + publish `firestore.rules` แล้ว
+- [ ] Firestore สร้างแล้ว + publish rules แล้ว (dev ตอนพัฒนา → **firestore.rules ตัวเต็มก่อนเก็บข้อมูลจริง**)
 - [ ] Auth เปิด Email/Password **และ** Anonymous
 - [ ] รัน `set-firebase-config.sh` แล้ว · `grep -rn "PASTE_"` ไม่เจออะไร
 - [ ] `grep -rn "banphai" --include="*.js" --include="*.html" .` ไม่เจอ config ของระบบเดิม
-- [ ] มีบัญชี admin เข้าระบบได้
+- [ ] มีบัญชี admin: doc `users/{uid}` role=admin สร้างใน Console แล้ว · login `tools/` ผ่าน
 - [ ] Blaze + budget alert
 - [ ] GitHub repo ใหม่ + Pages ขึ้นแล้ว
 - [ ] เปิดระบบเดิมเช็กว่ายังทำงานปกติ (login ได้ · ข้อมูลครบ · offline ได้)
