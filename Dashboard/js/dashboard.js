@@ -285,9 +285,9 @@ function allMembers() {
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 const COLORS = [
-  '#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6',
+  '#0a84ff','#30d158','#ff9f0a','#ff453a','#bf5af0',
   '#06b6d4','#f97316','#ec4899','#14b8a6','#a3e635',
-  '#64748b','#6366f1','#d946ef','#0ea5e9','#84cc16'
+  '#8e8e93','#6366f1','#d946ef','#0ea5e9','#84cc16'
 ];
 
 function esc(s) {
@@ -325,8 +325,8 @@ function makeChart(id, type, data, options = {}) {
   const ctx = document.getElementById(id);
   if (!ctx) return null;
   const darkScales = {
-    x: { ticks: { color: '#64748b', font: { family: 'Sarabun' } }, grid: { color: '#1e293b' } },
-    y: { ticks: { color: '#64748b', font: { family: 'Sarabun' } }, grid: { color: '#1e293b' } }
+    x: { ticks: { color: '#8e8e93', font: { family: 'Sarabun' } }, grid: { color: '#2c2c2e' } },
+    y: { ticks: { color: '#8e8e93', font: { family: 'Sarabun' } }, grid: { color: '#2c2c2e' } }
   };
   charts[id] = new Chart(ctx, {
     type,
@@ -334,7 +334,7 @@ function makeChart(id, type, data, options = {}) {
     options: {
       responsive: true,
       plugins: {
-        legend: { labels: { color: '#94a3b8', font: { family: 'Sarabun', size: 12 } } }
+        legend: { labels: { color: '#98989d', font: { family: 'Sarabun', size: 12 } } }
       },
       scales: (type === 'pie' || type === 'doughnut') ? undefined : darkScales,
       ...options,
@@ -430,13 +430,13 @@ function renderProgress() {
   // ═══ กราฟ Home: บ้านแยกตามผู้ควบคุม ═══
   makeChart('chartHomeBySupervisor', 'bar', {
     labels: teamRows.map(([n]) => n),
-    datasets: [{ label: 'บ้าน', data: teamRows.map(([, d]) => d.hhs), backgroundColor: '#3b82f6' }]
+    datasets: [{ label: 'บ้าน', data: teamRows.map(([, d]) => d.hhs), backgroundColor: '#0a84ff' }]
   }, { plugins: { legend: { display: false } } });
 
   // ═══ กราฟ Road: รถแยกตามจุดสำรวจ ═══
   makeChart('chartRoadByStation', 'bar', {
     labels: stRows.map(r => r.st.stationName || r.st.stationCode || r.st.id),
-    datasets: [{ label: 'คัน', data: stRows.map(r => r.count), backgroundColor: '#22c55e' }]
+    datasets: [{ label: 'คัน', data: stRows.map(r => r.count), backgroundColor: '#30d158' }]
   }, { plugins: { legend: { display: false } } });
 
   const emptySurv = '<p style="color:var(--muted);padding:8px 0">ยังไม่มีข้อมูล</p>';
@@ -578,11 +578,11 @@ function renderODMatrix(source) {
 
   set('odSummary', `
     <table class="data-table">
-      <tr><td>ในพื้นที่ (Internal)</td><td style="text-align:right;font-weight:700;color:#3b82f6">${internal}</td></tr>
-      <tr><td>เข้าพื้นที่ (Incoming)</td><td style="text-align:right;font-weight:700;color:#22c55e">${incoming}</td></tr>
-      <tr><td>ออกพื้นที่ (Outgoing)</td><td style="text-align:right;font-weight:700;color:#f59e0b">${outgoing}</td></tr>
-      <tr><td>นอกพื้นที่ล้วน (External)</td><td style="text-align:right;font-weight:700;color:#64748b">${passthrough}</td></tr>
-      <tr><td>⚠️ ไม่มีพิกัด (ข้อมูลไม่ครบ)</td><td style="text-align:right;font-weight:700;color:#ef4444">${noCoord} <span style="color:var(--muted);font-weight:400;font-size:11px">(${pctNo}%)</span></td></tr>
+      <tr><td>ในพื้นที่ (Internal)</td><td style="text-align:right;font-weight:700;color:#0a84ff">${internal}</td></tr>
+      <tr><td>เข้าพื้นที่ (Incoming)</td><td style="text-align:right;font-weight:700;color:#30d158">${incoming}</td></tr>
+      <tr><td>ออกพื้นที่ (Outgoing)</td><td style="text-align:right;font-weight:700;color:#ff9f0a">${outgoing}</td></tr>
+      <tr><td>นอกพื้นที่ล้วน (External)</td><td style="text-align:right;font-weight:700;color:#8e8e93">${passthrough}</td></tr>
+      <tr><td>⚠️ ไม่มีพิกัด (ข้อมูลไม่ครบ)</td><td style="text-align:right;font-weight:700;color:#ff453a">${noCoord} <span style="color:var(--muted);font-weight:400;font-size:11px">(${pctNo}%)</span></td></tr>
       <tr><td><strong>รวมทั้งหมด</strong></td><td style="text-align:right;font-weight:700">${pairs.length} <span style="color:var(--muted);font-weight:400;font-size:11px">(มีพิกัด ${withCoord})</span></td></tr>
     </table>`);
 
@@ -600,7 +600,7 @@ function renderODMatrix(source) {
         <tr>
           <td style="color:var(--muted)">${i + 1}</td>
           <td style="font-size:12px">${esc(pair)}</td>
-          <td style="font-weight:700;color:#3b82f6">${cnt}</td>
+          <td style="font-weight:700;color:#0a84ff">${cnt}</td>
         </tr>`).join('')}</tbody>
     </table>`);
 
@@ -734,8 +734,8 @@ function renderMap(mode, source) {
       const alpha = (0.1 + (cnt / maxGen) * 0.75).toFixed(2);
       featureRings(f).forEach(ring => {
         L.polygon(ring.map(c => [c[1], c[0]]), {
-          color: '#3b82f6', weight: 1.5,
-          fillColor: '#3b82f6', fillOpacity: parseFloat(alpha)
+          color: '#0a84ff', weight: 1.5,
+          fillColor: '#0a84ff', fillOpacity: parseFloat(alpha)
         }).bindTooltip(`<b>${n}</b><br>สร้าง: ${cnt} เที่ยว<br>ดึงดูด: ${attracted[n] || 0} เที่ยว`, { sticky: true })
           .addTo(choroLayer);
       });
@@ -750,7 +750,7 @@ function renderMap(mode, source) {
     features.forEach(f => {
       L.polygon(
         featureRings(f).flatMap(ring => [ring.map(c => [c[1], c[0]])]),
-        { color: '#475569', weight: 1, fill: false, opacity: 0.5, interactive: false }
+        { color: '#48484a', weight: 1, fill: false, opacity: 0.5, interactive: false }
       ).addTo(zoneLayer);
     });
 
@@ -769,7 +769,7 @@ function renderMap(mode, source) {
       const n = zName(f);
       const poly = L.polygon(
         featureRings(f).flatMap(ring => [ring.map(c => [c[1], c[0]])]),
-        { color: '#475569', weight: 1, fillColor: '#1e293b', fillOpacity: 0.15, className: 'zone-poly' }
+        { color: '#48484a', weight: 1, fillColor: '#2c2c2e', fillOpacity: 0.15, className: 'zone-poly' }
       );
       poly.on('click', () => {
         if (selectedZone === n) { App.clearZoneSelect(); return; }
@@ -803,9 +803,9 @@ function _drawDesireLines(pairs, maxCount, centroids) {
     const oC = pairEndpoint(p, 'o', centroids);
     const dC = pairEndpoint(p, 'd', centroids);
     const w  = Math.max(1, Math.round((count / maxCount) * 12));
-    const color = !isSelected ? '#3b82f6'
-                : outgoing    ? '#f59e0b'   // orange = ออก
-                :               '#22c55e';  // green  = เข้า
+    const color = !isSelected ? '#0a84ff'
+                : outgoing    ? '#ff9f0a'   // orange = ออก
+                :               '#30d158';  // green  = เข้า
     const op = !isSelected
       ? Math.min(0.8, 0.15 + (count / maxCount) * 0.65)
       : 0.85;
@@ -837,17 +837,17 @@ function _drawRawTrips(source) {
 
   let nHome = 0, nRoad = 0;
   if (source === 'home' || source === 'all')
-    nHome = drawSet(allTrips(), (t, s) => s === 'o' ? t.origin : t.destination, '#3b82f6', '🏠 Home');
+    nHome = drawSet(allTrips(), (t, s) => s === 'o' ? t.origin : t.destination, '#0a84ff', '🏠 Home');
   if (source === 'roadside' || source === 'all')
-    nRoad = drawSet(allInterviews(), (iv, s) => s === 'o' ? iv.originName : iv.destinationName, '#f59e0b', '🚗 Roadside');
+    nRoad = drawSet(allInterviews(), (iv, s) => s === 'o' ? iv.originName : iv.destinationName, '#ff9f0a', '🚗 Roadside');
 
   // สรุปจำนวนเส้นในแผงข้าง (แทนข้อความ "คลิกโซน" ซึ่งไม่เกี่ยวกับโหมดนี้)
   const el = document.getElementById('mapZoneEmpty');
   if (el) el.innerHTML = `
     <div style="font-size:12px;line-height:2;color:var(--muted)">
       <div style="font-weight:700;color:var(--text);margin-bottom:4px">📌 เส้นทางตามพิกัดจริง</div>
-      ${(source === 'home' || source === 'all') ? `<div><span style="color:#3b82f6">━</span> Home ${nHome} เที่ยว</div>` : ''}
-      ${(source === 'roadside' || source === 'all') ? `<div><span style="color:#f59e0b">━</span> Roadside ${nRoad} เที่ยว</div>` : ''}
+      ${(source === 'home' || source === 'all') ? `<div><span style="color:#0a84ff">━</span> Home ${nHome} เที่ยว</div>` : ''}
+      ${(source === 'roadside' || source === 'all') ? `<div><span style="color:#ff9f0a">━</span> Roadside ${nRoad} เที่ยว</div>` : ''}
       <div style="font-size:11px;margin-top:6px">จุดกลม = ปลายทาง<br>ชี้ที่เส้นเพื่อดูชื่อสถานที่</div>
     </div>`;
 }
@@ -857,11 +857,11 @@ function _styleZonePolygons() {
   zoneLayer.eachLayer(poly => {
     const n = poly._zoneName;
     if (!selectedZone) {
-      poly.setStyle({ color: '#475569', weight: 1, fillColor: '#1e293b', fillOpacity: 0.15 });
+      poly.setStyle({ color: '#48484a', weight: 1, fillColor: '#2c2c2e', fillOpacity: 0.15 });
     } else if (n === selectedZone) {
-      poly.setStyle({ color: '#ffffff', weight: 2.5, fillColor: '#3b82f6', fillOpacity: 0.25 });
+      poly.setStyle({ color: '#ffffff', weight: 2.5, fillColor: '#0a84ff', fillOpacity: 0.25 });
     } else {
-      poly.setStyle({ color: '#334155', weight: 1, fillColor: '#0f172a', fillOpacity: 0.35 });
+      poly.setStyle({ color: '#3a3a3c', weight: 1, fillColor: '#1c1c1e', fillOpacity: 0.35 });
     }
   });
 }
@@ -935,7 +935,7 @@ function renderPeakHour(source) {
     datasets: [{
       label: 'จำนวนเที่ยว',
       data: counts,
-      backgroundColor: counts.map((_, i) => i === peak ? '#f59e0b' : '#3b82f6')
+      backgroundColor: counts.map((_, i) => i === peak ? '#ff9f0a' : '#0a84ff')
     }]
   }, { plugins: { legend: { display: false } } });
 
@@ -948,12 +948,12 @@ function renderPeakHour(source) {
   const pct = (v) => total > 0 ? ((v / total) * 100).toFixed(1) + '%' : '—';
 
   set('peakAMSummary', `
-    <div style="font-size:28px;font-weight:700;color:#3b82f6">${String(amPeak).padStart(2,'0')}:00–${String(amPeak+1).padStart(2,'0')}:00</div>
+    <div style="font-size:28px;font-weight:700;color:#0a84ff">${String(amPeak).padStart(2,'0')}:00–${String(amPeak+1).padStart(2,'0')}:00</div>
     <div style="color:var(--muted);font-size:13px;margin-top:6px">${counts[amPeak]} เที่ยว · ${pct(counts[amPeak])} ของทั้งหมด</div>
     <div style="color:var(--muted);font-size:12px;margin-top:4px">รวม 5:00–11:00: ${amTotal} เที่ยว</div>`);
 
   set('peakPMSummary', `
-    <div style="font-size:28px;font-weight:700;color:#f59e0b">${String(pmPeak).padStart(2,'0')}:00–${String(pmPeak+1).padStart(2,'0')}:00</div>
+    <div style="font-size:28px;font-weight:700;color:#ff9f0a">${String(pmPeak).padStart(2,'0')}:00–${String(pmPeak+1).padStart(2,'0')}:00</div>
     <div style="color:var(--muted);font-size:13px;margin-top:6px">${counts[pmPeak]} เที่ยว · ${pct(counts[pmPeak])} ของทั้งหมด</div>
     <div style="color:var(--muted);font-size:12px;margin-top:4px">รวม 14:00–20:00: ${pmTotal} เที่ยว</div>`);
 
@@ -972,7 +972,7 @@ function renderPeakHour(source) {
 
   const rateRow = ([k, { m, t }]) =>
     `<tr><td>${esc(k)}</td><td>${m}</td><td>${t}</td>
-     <td style="font-weight:700;color:#3b82f6">${m > 0 ? (t/m).toFixed(2) : '—'}</td></tr>`;
+     <td style="font-weight:700;color:#0a84ff">${m > 0 ? (t/m).toFixed(2) : '—'}</td></tr>`;
 
   set('tripRateTable', `
     <div class="grid-2">
@@ -1009,7 +1009,7 @@ function renderStats() {
     makeChart('chartModalSplit', 'doughnut', {
       labels: modeE.map(e => e[0]),
       datasets: [{ data: modeE.map(e => e[1]), backgroundColor: COLORS }]
-    }, { plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 } } } } });
+    }, { plugins: { legend: { position: 'right', labels: { color: '#98989d', font: { size: 11 } } } } });
   } else {
     set('chartModalSplitMsg', '<p style="color:var(--muted)">ยังไม่มีข้อมูล modal split</p>');
   }
@@ -1023,8 +1023,8 @@ function renderStats() {
     indexAxis: 'y',
     plugins: { legend: { display: false } },
     scales: {
-      x: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
-      y: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#1e293b' } }
+      x: { ticks: { color: '#8e8e93' }, grid: { color: '#2c2c2e' } },
+      y: { ticks: { color: '#8e8e93', font: { size: 11 } }, grid: { color: '#2c2c2e' } }
     }
   });
 
@@ -1033,13 +1033,13 @@ function renderStats() {
   makeChart('chartPurposeHome', 'pie', {
     labels: phE.map(e => e[0]),
     datasets: [{ data: phE.map(e => e[1]), backgroundColor: COLORS }]
-  }, { plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 } } } } });
+  }, { plugins: { legend: { position: 'right', labels: { color: '#98989d', font: { size: 11 } } } } });
 
   const prE = topN(countBy(ivs, iv => iv.purpose), 10);
   makeChart('chartPurposeRoadside', 'pie', {
     labels: prE.map(e => e[0]),
     datasets: [{ data: prE.map(e => e[1]), backgroundColor: COLORS }]
-  }, { plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 } } } } });
+  }, { plugins: { legend: { position: 'right', labels: { color: '#98989d', font: { size: 11 } } } } });
 
   // Population pyramid
   const ageGroups = ['0–9','10–19','20–29','30–39','40–49','50–59','60–69','70+'];
@@ -1054,15 +1054,15 @@ function renderStats() {
   makeChart('chartPyramid', 'bar', {
     labels: ageGroups,
     datasets: [
-      { label: 'ชาย', data: maleD.map(v => -v), backgroundColor: '#3b82f6' },
+      { label: 'ชาย', data: maleD.map(v => -v), backgroundColor: '#0a84ff' },
       { label: 'หญิง', data: femD, backgroundColor: '#ec4899' }
     ]
   }, {
     indexAxis: 'y',
-    plugins: { legend: { labels: { color: '#94a3b8' } } },
+    plugins: { legend: { labels: { color: '#98989d' } } },
     scales: {
-      x: { ticks: { color: '#64748b', callback: v => Math.abs(v) }, grid: { color: '#1e293b' } },
-      y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
+      x: { ticks: { color: '#8e8e93', callback: v => Math.abs(v) }, grid: { color: '#2c2c2e' } },
+      y: { ticks: { color: '#8e8e93' }, grid: { color: '#2c2c2e' } }
     }
   });
 
@@ -1075,20 +1075,20 @@ function renderStats() {
   });
   makeChart('chartIncome', 'bar', {
     labels: incE.map(e => e[0]),
-    datasets: [{ label: 'ครัวเรือน', data: incE.map(e => e[1]), backgroundColor: '#22c55e' }]
+    datasets: [{ label: 'ครัวเรือน', data: incE.map(e => e[1]), backgroundColor: '#30d158' }]
   }, { plugins: { legend: { display: false } } });
 
   // Education
   const eduE = topN(countBy(members, m => m.education), 8);
   makeChart('chartEducation', 'bar', {
     labels: eduE.map(e => e[0]),
-    datasets: [{ label: 'จำนวน', data: eduE.map(e => e[1]), backgroundColor: '#8b5cf6' }]
+    datasets: [{ label: 'จำนวน', data: eduE.map(e => e[1]), backgroundColor: '#bf5af0' }]
   }, {
     indexAxis: 'y',
     plugins: { legend: { display: false } },
     scales: {
-      x: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
-      y: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#1e293b' } }
+      x: { ticks: { color: '#8e8e93' }, grid: { color: '#2c2c2e' } },
+      y: { ticks: { color: '#8e8e93', font: { size: 11 } }, grid: { color: '#2c2c2e' } }
     }
   });
 
@@ -1123,7 +1123,7 @@ const App = {
 
     fbInit();
     // Chart.js global defaults
-    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.color = '#98989d';
     Chart.defaults.font.family = 'Sarabun';
 
     auth.onAuthStateChanged(async user => {

@@ -297,10 +297,10 @@ const MapDashboard = {
   // ----- Drawing -----
 
   _zoneColor(count) {
-    if (count === 0) return { fill: 'rgba(148,163,184,0.15)', line: 'rgba(148,163,184,0.7)' };
-    if (count < 5)  return { fill: 'rgba(59,130,246,0.15)',  line: 'rgba(59,130,246,0.8)' };
-    if (count < 15) return { fill: 'rgba(59,130,246,0.25)',  line: 'rgba(37,99,235,0.9)' };
-    return              { fill: 'rgba(37,99,235,0.35)',       line: 'rgba(30,64,175,1)' };
+    if (count === 0) return { fill: 'rgba(152,152,157,0.15)', line: 'rgba(152,152,157,0.7)' };
+    if (count < 5)  return { fill: 'rgba(10,132,255,0.15)',  line: 'rgba(10,132,255,0.8)' };
+    if (count < 15) return { fill: 'rgba(10,132,255,0.25)',  line: 'rgba(10,132,255,0.9)' };
+    return              { fill: 'rgba(10,132,255,0.35)',       line: 'rgba(30,64,175,1)' };
   },
 
   _drawZones(zoneCounts) {
@@ -337,7 +337,7 @@ const MapDashboard = {
             radius: count > 0 ? 14 : 10,
             weight: 1.5,
             lineColor: '#fff',
-            fillColor: count > 0 ? '#2563eb' : '#94a3b8',
+            fillColor: count > 0 ? '#0a84ff' : '#98989d',
             title: String(count)
           }
         );
@@ -358,7 +358,7 @@ const MapDashboard = {
             radius: 6,
             weight: 1.4,
             lineColor: '#fff',
-            fillColor: '#ef4444',
+            fillColor: '#ff453a',
             title
           }
         );
@@ -435,7 +435,7 @@ const MapDashboard = {
       if (!entry.poly) return;
       const isActive = zoneName === name;
       const color = isActive
-        ? { fill: 'rgba(245,158,11,0.35)', line: 'rgba(217,119,6,1)' }
+        ? { fill: 'rgba(255,159,10,0.35)', line: 'rgba(217,119,6,1)' }
         : this._zoneColor(entry.count);
       try {
         this._map.Overlays.remove(entry.poly);

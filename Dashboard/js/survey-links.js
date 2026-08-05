@@ -10,8 +10,8 @@ const SurveyLinks = {
   _built: false,
 
   APPS: {
-    home:     { name: 'Home Interview',     icon: '🏠', path: 'Home',     color: '#60a5fa' },
-    roadside: { name: 'Roadside Interview', icon: '🚦', path: 'Roadside', color: '#fb923c' }
+    home:     { name: 'Home Interview',     icon: '🏠', path: 'Home',     color: '#409cff' },
+    roadside: { name: 'Roadside Interview', icon: '🚦', path: 'Roadside', color: '#ff9f0a' }
   },
 
   // ---------- utils ----------
@@ -38,51 +38,51 @@ const SurveyLinks = {
     const wrap = document.createElement('div');
     wrap.id = 'slModal';
     wrap.setAttribute('style',
-      'position:fixed;inset:0;z-index:9000;background:rgba(2,6,23,.72);display:none;' +
+      'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.55);display:none;' +
       'align-items:flex-start;justify-content:center;padding:28px 16px;overflow:auto');
     wrap.innerHTML = `
-      <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;max-width:760px;width:100%;padding:26px">
+      <div style="background:#2c2c2e;border:1px solid rgba(255,255,255,.12);border-radius:12px;max-width:760px;width:100%;padding:26px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:6px">
           <div>
-            <div style="font-size:19px;font-weight:700;color:#f1f5f9">🔗 ลิงก์แบบสอบถาม</div>
-            <div style="font-size:13px;color:#64748b;margin-top:3px" id="slProj"></div>
+            <div style="font-size:19px;font-weight:700;color:#f5f5f7">🔗 ลิงก์แบบสอบถาม</div>
+            <div style="font-size:13px;color:#8e8e93;margin-top:3px" id="slProj"></div>
           </div>
-          <button id="slClose" style="background:#334155;border:1px solid #475569;color:#cbd5e1;font-family:inherit;font-size:13px;font-weight:600;padding:7px 13px;border-radius:8px;cursor:pointer">ปิด</button>
+          <button id="slClose" style="background:#3a3a3c;border:1px solid #48484a;color:#d1d1d6;font-family:inherit;font-size:13px;font-weight:600;padding:7px 13px;border-radius:8px;cursor:pointer">ปิด</button>
         </div>
 
-        <div style="font-size:12.5px;color:#64748b;line-height:1.75;margin:12px 0 18px">
+        <div style="font-size:12.5px;color:#8e8e93;line-height:1.75;margin:12px 0 18px">
           ผู้สำรวจไม่ต้องมีบัญชี — เปิดลิงก์แล้วเข้าแบบสอบถามของโครงการนี้ได้เลย<br>
-          <b style="color:#fca5a5">ใครถือลิงก์ก็ส่งข้อมูลได้</b> — ปิดลิงก์ได้ทุกเมื่อจากรายการด้านล่าง
+          <b style="color:#ff8a80">ใครถือลิงก์ก็ส่งข้อมูลได้</b> — ปิดลิงก์ได้ทุกเมื่อจากรายการด้านล่าง
         </div>
 
-        <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:18px;margin-bottom:20px">
-          <div style="font-size:14px;font-weight:700;color:#f1f5f9;margin-bottom:14px">ออกลิงก์ใหม่</div>
+        <div style="background:#1c1c1e;border:1px solid #3a3a3c;border-radius:12px;padding:18px;margin-bottom:20px">
+          <div style="font-size:14px;font-weight:700;color:#f5f5f7;margin-bottom:14px">ออกลิงก์ใหม่</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="slFormGrid">
             <div>
-              <label style="display:block;font-size:12px;color:#94a3b8;font-weight:600;margin-bottom:5px">แบบสอบถาม *</label>
-              <select id="slApp" style="width:100%;padding:10px 12px;background:#1e293b;border:1px solid #334155;border-radius:9px;color:#e2e8f0;font-size:14px;font-family:inherit">
+              <label style="display:block;font-size:12px;color:#98989d;font-weight:600;margin-bottom:5px">แบบสอบถาม *</label>
+              <select id="slApp" style="width:100%;padding:10px 12px;background:#2c2c2e;border:1px solid #3a3a3c;border-radius:9px;color:#e5e5ea;font-size:14px;font-family:inherit">
                 <option value="home">🏠 Home Interview — สัมภาษณ์ในบ้าน</option>
                 <option value="roadside">🚦 Roadside Interview — สัมภาษณ์ริมทาง</option>
               </select>
             </div>
             <div>
-              <label style="display:block;font-size:12px;color:#94a3b8;font-weight:600;margin-bottom:5px">ผู้ควบคุม / ทีม</label>
-              <select id="slSup" style="width:100%;padding:10px 12px;background:#1e293b;border:1px solid #334155;border-radius:9px;color:#e2e8f0;font-size:14px;font-family:inherit"></select>
+              <label style="display:block;font-size:12px;color:#98989d;font-weight:600;margin-bottom:5px">ผู้ควบคุม / ทีม</label>
+              <select id="slSup" style="width:100%;padding:10px 12px;background:#2c2c2e;border:1px solid #3a3a3c;border-radius:9px;color:#e5e5ea;font-size:14px;font-family:inherit"></select>
             </div>
             <div>
-              <label style="display:block;font-size:12px;color:#94a3b8;font-weight:600;margin-bottom:5px">ป้ายกำกับ (ไว้จำว่าให้ใคร)</label>
-              <input id="slLabel" placeholder="เช่น ทีมสมชาย รอบเช้า" style="width:100%;padding:10px 12px;background:#1e293b;border:1px solid #334155;border-radius:9px;color:#e2e8f0;font-size:14px;font-family:inherit" />
+              <label style="display:block;font-size:12px;color:#98989d;font-weight:600;margin-bottom:5px">ป้ายกำกับ (ไว้จำว่าให้ใคร)</label>
+              <input id="slLabel" placeholder="เช่น ทีมสมชาย รอบเช้า" style="width:100%;padding:10px 12px;background:#2c2c2e;border:1px solid #3a3a3c;border-radius:9px;color:#e5e5ea;font-size:14px;font-family:inherit" />
             </div>
             <div>
-              <label style="display:block;font-size:12px;color:#94a3b8;font-weight:600;margin-bottom:5px">วันหมดอายุ (ว่าง = ไม่หมด)</label>
-              <input id="slExp" type="date" style="width:100%;padding:10px 12px;background:#1e293b;border:1px solid #334155;border-radius:9px;color:#e2e8f0;font-size:14px;font-family:inherit" />
+              <label style="display:block;font-size:12px;color:#98989d;font-weight:600;margin-bottom:5px">วันหมดอายุ (ว่าง = ไม่หมด)</label>
+              <input id="slExp" type="date" style="width:100%;padding:10px 12px;background:#2c2c2e;border:1px solid #3a3a3c;border-radius:9px;color:#e5e5ea;font-size:14px;font-family:inherit" />
             </div>
           </div>
-          <button id="slCreate" style="margin-top:14px;background:#2563eb;color:#fff;border:none;font-family:inherit;font-size:14px;font-weight:600;padding:10px 18px;border-radius:9px;cursor:pointer">ออกลิงก์</button>
+          <button id="slCreate" style="margin-top:14px;background:#0a84ff;color:#fff;border:none;font-family:inherit;font-size:14px;font-weight:600;padding:10px 18px;border-radius:9px;cursor:pointer">ออกลิงก์</button>
           <div id="slMsg" style="display:none;margin-top:12px;padding:10px 13px;border-radius:9px;font-size:13px;line-height:1.6"></div>
         </div>
 
-        <div style="font-size:14px;font-weight:700;color:#f1f5f9;margin-bottom:12px">ลิงก์ของโครงการนี้</div>
+        <div style="font-size:14px;font-weight:700;color:#f5f5f7;margin-bottom:12px">ลิงก์ของโครงการนี้</div>
         <div id="slList"></div>
       </div>`;
     document.body.appendChild(wrap);
@@ -97,9 +97,9 @@ const SurveyLinks = {
     const el = document.getElementById('slMsg');
     el.style.display = 'block';
     el.textContent = text;
-    el.style.background = ok ? 'rgba(16,185,129,.12)' : 'rgba(239,68,68,.12)';
-    el.style.color      = ok ? '#6ee7b7' : '#fca5a5';
-    el.style.border     = '1px solid ' + (ok ? 'rgba(110,231,183,.25)' : 'rgba(252,165,165,.25)');
+    el.style.background = ok ? 'rgba(48,209,88,.12)' : 'rgba(255,69,58,.12)';
+    el.style.color      = ok ? '#63e6a0' : '#ff8a80';
+    el.style.border     = '1px solid ' + (ok ? 'rgba(48,209,88,.25)' : 'rgba(255,138,128,.25)');
   },
 
   async open() {
@@ -134,11 +134,11 @@ const SurveyLinks = {
       this._links = snap.docs.map(d => ({ token: d.id, ...d.data() }))
                              .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     } catch (e) {
-      box.innerHTML = `<div style="color:#fca5a5;font-size:13px;padding:14px">อ่านรายการลิงก์ไม่ได้: ${this._esc(e.message)}</div>`;
+      box.innerHTML = `<div style="color:#ff8a80;font-size:13px;padding:14px">อ่านรายการลิงก์ไม่ได้: ${this._esc(e.message)}</div>`;
       return;
     }
     if (!this._links.length) {
-      box.innerHTML = '<div style="color:#64748b;font-size:13px;text-align:center;padding:26px;background:#0f172a;border:1px dashed #475569;border-radius:12px">ยังไม่มีลิงก์ — ออกลิงก์แรกด้านบน</div>';
+      box.innerHTML = '<div style="color:#8e8e93;font-size:13px;text-align:center;padding:26px;background:#1c1c1e;border:1px dashed #48484a;border-radius:12px">ยังไม่มีลิงก์ — ออกลิงก์แรกด้านบน</div>';
       return;
     }
     box.innerHTML = this._links.map(l => {
@@ -146,25 +146,25 @@ const SurveyLinks = {
       const off = l.enabled === false;
       const expired = l.expiresAt && new Date(l.expiresAt) < new Date();
       const dead = off || expired;
-      return `<div style="background:#0f172a;border:1px solid ${dead ? '#334155' : '#475569'};border-radius:12px;padding:15px;margin-bottom:11px;opacity:${dead ? '.55' : '1'}">
+      return `<div style="background:#1c1c1e;border:1px solid ${dead ? '#3a3a3c' : '#48484a'};border-radius:12px;padding:15px;margin-bottom:11px;opacity:${dead ? '.55' : '1'}">
         <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start">
           <div style="min-width:0">
-            <div style="font-size:14.5px;font-weight:700;color:#f1f5f9">
+            <div style="font-size:14.5px;font-weight:700;color:#f5f5f7">
               ${app.icon} ${this._esc(l.label || app.name)}
-              ${dead ? `<span style="font-size:11px;font-weight:600;color:#94a3b8;background:rgba(100,116,139,.2);padding:2px 9px;border-radius:99px;margin-left:7px">${expired ? 'หมดอายุ' : 'ปิดอยู่'}</span>` : ''}
+              ${dead ? `<span style="font-size:11px;font-weight:600;color:#98989d;background:rgba(142,142,147,.2);padding:2px 9px;border-radius:99px;margin-left:7px">${expired ? 'หมดอายุ' : 'ปิดอยู่'}</span>` : ''}
             </div>
-            <div style="font-size:12px;color:#64748b;margin-top:3px">
+            <div style="font-size:12px;color:#8e8e93;margin-top:3px">
               ${this._esc(app.name)}${l.supervisorName ? ' · ทีม ' + this._esc(l.supervisorName) : ''}${l.expiresAt ? ' · ถึง ' + this._esc(l.expiresAt.slice(0,10)) : ''}
             </div>
           </div>
           <div style="display:flex;gap:7px;flex-wrap:wrap">
-            <button data-copy="${this._esc(l.token)}" style="background:#334155;border:1px solid #475569;color:#cbd5e1;font-family:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer">📋 คัดลอก</button>
-            <button data-qr="${this._esc(l.token)}" style="background:#334155;border:1px solid #475569;color:#cbd5e1;font-family:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer">⬜ QR</button>
-            <button data-toggle="${this._esc(l.token)}" style="background:#334155;border:1px solid #475569;color:#cbd5e1;font-family:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer">${off ? 'เปิด' : 'ปิด'}</button>
-            <button data-del="${this._esc(l.token)}" style="background:rgba(239,68,68,.15);border:1px solid rgba(252,165,165,.3);color:#fca5a5;font-family:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer">ลบ</button>
+            <button data-copy="${this._esc(l.token)}" style="background:#3a3a3c;border:1px solid #48484a;color:#d1d1d6;font-family:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer">📋 คัดลอก</button>
+            <button data-qr="${this._esc(l.token)}" style="background:#3a3a3c;border:1px solid #48484a;color:#d1d1d6;font-family:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer">⬜ QR</button>
+            <button data-toggle="${this._esc(l.token)}" style="background:#3a3a3c;border:1px solid #48484a;color:#d1d1d6;font-family:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer">${off ? 'เปิด' : 'ปิด'}</button>
+            <button data-del="${this._esc(l.token)}" style="background:rgba(255,69,58,.15);border:1px solid rgba(255,138,128,.3);color:#ff8a80;font-family:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer">ลบ</button>
           </div>
         </div>
-        <div style="margin-top:10px;font-size:11.5px;color:#64748b;word-break:break-all;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px 11px">${this._esc(this.url(l))}</div>
+        <div style="margin-top:10px;font-size:11.5px;color:#8e8e93;word-break:break-all;background:#2c2c2e;border:1px solid #3a3a3c;border-radius:8px;padding:8px 11px">${this._esc(this.url(l))}</div>
         <div data-qrbox="${this._esc(l.token)}" style="display:none;margin-top:12px;text-align:center"></div>
       </div>`;
     }).join('');
@@ -229,10 +229,10 @@ const SurveyLinks = {
       q.addData(this.url(l));
       q.make();
       box.innerHTML = `<div style="display:inline-block;background:#fff;padding:12px;border-radius:12px">${q.createImgTag(5, 8)}</div>
-        <div style="font-size:11.5px;color:#64748b;margin-top:8px">ให้ผู้สำรวจสแกนด้วยกล้องมือถือ</div>`;
+        <div style="font-size:11.5px;color:#8e8e93;margin-top:8px">ให้ผู้สำรวจสแกนด้วยกล้องมือถือ</div>`;
       box.dataset.done = '1';
     } catch (e) {
-      box.innerHTML = `<div style="color:#fca5a5;font-size:12.5px">สร้าง QR ไม่ได้ (ต้องต่ออินเทอร์เน็ตครั้งแรกเพื่อโหลดตัวสร้าง QR)</div>`;
+      box.innerHTML = `<div style="color:#ff8a80;font-size:12.5px">สร้าง QR ไม่ได้ (ต้องต่ออินเทอร์เน็ตครั้งแรกเพื่อโหลดตัวสร้าง QR)</div>`;
     }
   },
 

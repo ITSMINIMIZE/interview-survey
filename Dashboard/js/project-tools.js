@@ -26,16 +26,16 @@ const ProjectTools = {
     const w = document.createElement('div');
     w.id = 'ptModal';
     w.setAttribute('style',
-      'position:fixed;inset:0;z-index:9000;background:rgba(2,6,23,.72);display:none;' +
+      'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.55);display:none;' +
       'align-items:flex-start;justify-content:center;padding:28px 16px;overflow:auto');
     w.innerHTML = `
-      <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;max-width:820px;width:100%;padding:26px">
+      <div style="background:#2c2c2e;border:1px solid rgba(255,255,255,.12);border-radius:12px;max-width:820px;width:100%;padding:26px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px">
           <div>
-            <div style="font-size:19px;font-weight:700;color:#f1f5f9">🧰 เครื่องมือของโครงการ</div>
-            <div style="font-size:13px;color:#64748b;margin-top:3px" id="ptProj"></div>
+            <div style="font-size:19px;font-weight:700;color:#f5f5f7">🧰 เครื่องมือของโครงการ</div>
+            <div style="font-size:13px;color:#8e8e93;margin-top:3px" id="ptProj"></div>
           </div>
-          <button id="ptClose" style="background:#334155;border:1px solid #475569;color:#cbd5e1;font-family:inherit;font-size:13px;font-weight:600;padding:7px 13px;border-radius:8px;cursor:pointer">ปิด</button>
+          <button id="ptClose" style="background:#3a3a3c;border:1px solid #48484a;color:#d1d1d6;font-family:inherit;font-size:13px;font-weight:600;padding:7px 13px;border-radius:8px;cursor:pointer">ปิด</button>
         </div>
 
         <div style="display:flex;gap:8px;margin:18px 0;flex-wrap:wrap" id="ptTabs">
@@ -50,31 +50,31 @@ const ProjectTools = {
 
     const css = document.createElement('style');
     css.textContent = `
-      .pt-tab{background:#0f172a;border:1px solid #334155;color:#94a3b8;font-family:inherit;
+      .pt-tab{background:#1c1c1e;border:1px solid #3a3a3c;color:#98989d;font-family:inherit;
               font-size:13.5px;font-weight:600;padding:8px 15px;border-radius:9px;cursor:pointer}
-      .pt-tab:hover{border-color:#475569;color:#e2e8f0}
-      .pt-tab.on{background:rgba(37,99,235,.18);border-color:#2563eb;color:#93c5fd}
-      .pt-lb{display:block;font-size:12px;color:#94a3b8;font-weight:600;margin-bottom:5px}
-      .pt-in{width:100%;padding:9px 12px;background:#1e293b;border:1px solid #334155;
-             border-radius:9px;color:#e2e8f0;font-size:14px;font-family:inherit}
-      .pt-in:focus{outline:none;border-color:#3b82f6}
+      .pt-tab:hover{border-color:#48484a;color:#e5e5ea}
+      .pt-tab.on{background:rgba(10,132,255,.18);border-color:#0a84ff;color:#64b5ff}
+      .pt-lb{display:block;font-size:12px;color:#98989d;font-weight:600;margin-bottom:5px}
+      .pt-in{width:100%;padding:9px 12px;background:#2c2c2e;border:1px solid #3a3a3c;
+             border-radius:9px;color:#e5e5ea;font-size:14px;font-family:inherit}
+      .pt-in:focus{outline:none;border-color:#0a84ff}
       .pt-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-      .pt-card{background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px}
-      .pt-row{background:#0f172a;border:1px solid #334155;border-radius:11px;padding:13px 15px;
+      .pt-card{background:#1c1c1e;border:1px solid #3a3a3c;border-radius:12px;padding:16px;margin-bottom:12px}
+      .pt-row{background:#1c1c1e;border:1px solid #3a3a3c;border-radius:11px;padding:13px 15px;
               margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-      .pt-btn{background:#2563eb;color:#fff;border:none;font-family:inherit;font-size:14px;
+      .pt-btn{background:#0a84ff;color:#fff;border:none;font-family:inherit;font-size:14px;
               font-weight:600;padding:9px 17px;border-radius:9px;cursor:pointer}
-      .pt-btn-g{background:#334155;border:1px solid #475569;color:#cbd5e1;font-family:inherit;
+      .pt-btn-g{background:#3a3a3c;border:1px solid #48484a;color:#d1d1d6;font-family:inherit;
                 font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer}
-      .pt-btn-d{background:rgba(239,68,68,.15);border:1px solid rgba(252,165,165,.3);color:#fca5a5;
+      .pt-btn-d{background:rgba(255,69,58,.15);border:1px solid rgba(255,138,128,.3);color:#ff8a80;
                 font-family:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer}
-      .pt-empty{color:#64748b;font-size:13px;text-align:center;padding:24px;
-                background:#0f172a;border:1px dashed #475569;border-radius:12px}
+      .pt-empty{color:#8e8e93;font-size:13px;text-align:center;padding:24px;
+                background:#1c1c1e;border:1px dashed #48484a;border-radius:12px}
       .pt-msg{padding:10px 13px;border-radius:9px;font-size:13px;margin-top:12px;line-height:1.6;display:none}
-      .pt-hint{font-size:12px;color:#64748b;line-height:1.7;margin-bottom:14px}
-      .pt-link{display:flex;align-items:center;gap:11px;background:#0f172a;border:1px solid #334155;
+      .pt-hint{font-size:12px;color:#8e8e93;line-height:1.7;margin-bottom:14px}
+      .pt-link{display:flex;align-items:center;gap:11px;background:#1c1c1e;border:1px solid #3a3a3c;
                border-radius:11px;padding:14px 16px;margin-bottom:10px;text-decoration:none;color:inherit}
-      .pt-link:hover{border-color:#475569}
+      .pt-link:hover{border-color:#48484a}
       @media(max-width:640px){.pt-grid{grid-template-columns:1fr}}`;
     document.head.appendChild(css);
 
@@ -106,9 +106,9 @@ const ProjectTools = {
     if (!el) return;
     el.style.display = 'block';
     el.textContent = text;
-    el.style.background = ok ? 'rgba(16,185,129,.12)' : 'rgba(239,68,68,.12)';
-    el.style.color      = ok ? '#6ee7b7' : '#fca5a5';
-    el.style.border     = '1px solid ' + (ok ? 'rgba(110,231,183,.25)' : 'rgba(252,165,165,.25)');
+    el.style.background = ok ? 'rgba(48,209,88,.12)' : 'rgba(255,69,58,.12)';
+    el.style.color      = ok ? '#63e6a0' : '#ff8a80';
+    el.style.border     = '1px solid ' + (ok ? 'rgba(48,209,88,.25)' : 'rgba(255,138,128,.25)');
   },
 
   async _render() {
@@ -178,24 +178,24 @@ const ProjectTools = {
       // admin ขึ้นให้เห็นด้วย แต่ถอดออกไม่ได้ — เป็นผู้ควบคุมทุกโครงการโดยอัตโนมัติ
       const admins = this._users.filter(u => u.role === 'admin' && !u.disabled);
       const adminHTML = admins.length ? `
-        <div style="font-size:12.5px;color:#64748b;font-weight:700;margin:4px 0 9px">อัตโนมัติ — ผู้ดูแลระบบ</div>
+        <div style="font-size:12.5px;color:#8e8e93;font-weight:700;margin:4px 0 9px">อัตโนมัติ — ผู้ดูแลระบบ</div>
         ${admins.map(u => `
           <div class="pt-row" style="opacity:.85">
             <div>
-              <div style="font-size:14.5px;font-weight:700;color:#f1f5f9">${this._esc(this._supName(u))}
-                <span style="font-size:11px;font-weight:600;color:#93c5fd;background:rgba(37,99,235,.18);border:1px solid rgba(37,99,235,.35);padding:2px 9px;border-radius:99px;margin-left:7px">admin</span>
+              <div style="font-size:14.5px;font-weight:700;color:#f5f5f7">${this._esc(this._supName(u))}
+                <span style="font-size:11px;font-weight:600;color:#64b5ff;background:rgba(10,132,255,.18);border:1px solid rgba(10,132,255,.35);padding:2px 9px;border-radius:99px;margin-left:7px">admin</span>
               </div>
-              <div style="font-size:12px;color:#64748b;margin-top:2px">${this._esc(u.email || '')} · เป็นผู้ควบคุมทุกโครงการ</div>
+              <div style="font-size:12px;color:#8e8e93;margin-top:2px">${this._esc(u.email || '')} · เป็นผู้ควบคุมทุกโครงการ</div>
             </div>
           </div>`).join('')}
-        <div style="font-size:12.5px;color:#64748b;font-weight:700;margin:16px 0 9px">แต่งตั้งในโครงการนี้</div>` : '';
+        <div style="font-size:12.5px;color:#8e8e93;font-weight:700;margin:16px 0 9px">แต่งตั้งในโครงการนี้</div>` : '';
 
       this._g('ptMList').innerHTML = adminHTML + (this._members.length
         ? this._members.map(m => `
           <div class="pt-row">
             <div>
-              <div style="font-size:14.5px;font-weight:700;color:#f1f5f9">${this._esc(m.supervisorName || m.displayName || m.uid)}</div>
-              <div style="font-size:12px;color:#64748b;margin-top:2px">${this._esc(m.email || '')}${m.phone ? ' · ' + this._esc(m.phone) : ''}</div>
+              <div style="font-size:14.5px;font-weight:700;color:#f5f5f7">${this._esc(m.supervisorName || m.displayName || m.uid)}</div>
+              <div style="font-size:12px;color:#8e8e93;margin-top:2px">${this._esc(m.email || '')}${m.phone ? ' · ' + this._esc(m.phone) : ''}</div>
             </div>
             <button class="pt-btn-d" data-rm="${this._esc(m.uid)}">ถอดออก</button>
           </div>`).join('')
@@ -282,7 +282,7 @@ const ProjectTools = {
         ต้องสร้างจุดให้ครบ<b>ก่อน</b>ส่งลิงก์ให้ผู้สำรวจ ไม่งั้นเขาเปิดแอปมาแล้วไม่มีจุดให้เลือก
       </div>
       <div class="pt-card">
-        <div style="font-size:14px;font-weight:700;color:#f1f5f9;margin-bottom:13px" id="ptStFormTitle">➕ เพิ่มจุดสำรวจ</div>
+        <div style="font-size:14px;font-weight:700;color:#f5f5f7;margin-bottom:13px" id="ptStFormTitle">➕ เพิ่มจุดสำรวจ</div>
         <div class="pt-grid">
           <div>
             <label class="pt-lb" for="ptStName">รหัส / ชื่อจุดสำรวจ *</label>
@@ -307,7 +307,7 @@ const ProjectTools = {
         <div style="margin-top:12px">
           <label class="pt-lb" for="ptStCo">พิกัด GPS (lat, lon) *</label>
           <input id="ptStCo" class="pt-in" placeholder="เช่น 16.0590, 102.7313" />
-          <div style="font-size:11.5px;color:#64748b;margin-top:5px">คัดลอกจาก Google Maps ได้เลย — คลิกขวาบนแผนที่แล้วกดที่ตัวเลขพิกัด</div>
+          <div style="font-size:11.5px;color:#8e8e93;margin-top:5px">คัดลอกจาก Google Maps ได้เลย — คลิกขวาบนแผนที่แล้วกดที่ตัวเลขพิกัด</div>
         </div>
         <div class="pt-grid" style="margin-top:12px">
           <div><label class="pt-lb" for="ptStSub">ตำบล</label><input id="ptStSub" class="pt-in" /></div>
@@ -352,15 +352,15 @@ const ProjectTools = {
         .filter(st => !st._deleted)
         .sort((a, b) => String(a.stationName || '').localeCompare(String(b.stationName || ''), 'th'));
       this._g('ptStList').innerHTML = this._stations.length
-        ? `<div style="font-size:14px;font-weight:700;color:#f1f5f9;margin-bottom:12px">จุดสำรวจในโครงการนี้ (${this._stations.length})</div>`
+        ? `<div style="font-size:14px;font-weight:700;color:#f5f5f7;margin-bottom:12px">จุดสำรวจในโครงการนี้ (${this._stations.length})</div>`
           + this._stations.map(st => `
           <div class="pt-row">
             <div style="min-width:0">
-              <div style="font-size:14.5px;font-weight:700;color:#f1f5f9">🚦 ${this._esc(st.stationName || st.id)}</div>
-              <div style="font-size:12px;color:#64748b;margin-top:2px">
+              <div style="font-size:14.5px;font-weight:700;color:#f5f5f7">🚦 ${this._esc(st.stationName || st.id)}</div>
+              <div style="font-size:12px;color:#8e8e93;margin-top:2px">
                 ${this._esc(st.road || '—')}${st.direction ? ' · ' + this._esc(st.direction) : ''}${st.supervisorName ? ' · ทีม ' + this._esc(st.supervisorName) : ''}
               </div>
-              <div style="font-size:11.5px;color:#475569;margin-top:2px">${this._esc(st.coordinates || 'ไม่มีพิกัด')}</div>
+              <div style="font-size:11.5px;color:#48484a;margin-top:2px">${this._esc(st.coordinates || 'ไม่มีพิกัด')}</div>
             </div>
             <div style="display:flex;gap:7px;flex-wrap:wrap">
               <button class="pt-btn-g" data-edit="${this._esc(st.id)}">แก้ไข</button>
@@ -480,9 +480,9 @@ const ProjectTools = {
       <a class="pt-link" href="../tools/${href}?project=${p}">
         <span style="font-size:24px">${icon}</span>
         <span style="min-width:0">
-          <span style="display:block;font-size:14.5px;font-weight:700;color:#f1f5f9">${title}</span>
-          <span style="display:block;font-size:12.5px;color:#64748b;line-height:1.6;margin-top:2px">${desc}</span>
-          ${warn ? `<span style="display:inline-block;font-size:11px;font-weight:600;color:#fca5a5;background:rgba(239,68,68,.14);border:1px solid rgba(252,165,165,.3);padding:2px 9px;border-radius:99px;margin-top:6px">${warn}</span>` : ''}
+          <span style="display:block;font-size:14.5px;font-weight:700;color:#f5f5f7">${title}</span>
+          <span style="display:block;font-size:12.5px;color:#8e8e93;line-height:1.6;margin-top:2px">${desc}</span>
+          ${warn ? `<span style="display:inline-block;font-size:11px;font-weight:600;color:#ff8a80;background:rgba(255,69,58,.14);border:1px solid rgba(255,138,128,.3);padding:2px 9px;border-radius:99px;margin-top:6px">${warn}</span>` : ''}
         </span>
       </a>`;
     this._g('ptBody').innerHTML = `
@@ -491,7 +491,7 @@ const ProjectTools = {
       </div>
       ${t('import-zones.html', '🗺', 'นำเข้าโซน', 'อัปโหลด shapefile (.zip) หรือ GeoJSON → ใช้ทำ OD matrix และแผนที่ choropleth ของโครงการนี้')}
       ${t('seed-places.html', '📍', 'นำเข้าคลังสถานที่', 'นำเข้าสถานที่จาก Excel/CSV ล่วงหน้า → ผู้สำรวจค้นเจอทันที ไม่ต้องยิง API')}
-      <div style="font-size:14px;font-weight:700;color:#f1f5f9;margin:20px 0 12px">ข้อมูลทดสอบ</div>
+      <div style="font-size:14px;font-weight:700;color:#f5f5f7;margin:20px 0 12px">ข้อมูลทดสอบ</div>
       ${t('seed-home.html', '🏘', 'สร้างข้อมูลทดสอบ Home', 'สร้างครัวเรือน/สมาชิก/เที่ยวเดินทางจำลอง สำหรับลองระบบ', '⚠ ใช้กับโครงการทดสอบเท่านั้น')}
       ${t('seed-roadside.html', '🚦', 'สร้างข้อมูลทดสอบ Roadside', 'สร้างจุดสำรวจ + การสัมภาษณ์จำลอง', '⚠ ใช้กับโครงการทดสอบเท่านั้น')}
       ${t('cleanup-seed.html', '🧹', 'ลบข้อมูลทดสอบ', 'ลบเฉพาะข้อมูลที่รหัสมีคำว่า SEED — ข้อมูลจริงไม่ถูกแตะ')}`;
