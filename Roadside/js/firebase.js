@@ -100,11 +100,6 @@ const FB = {
       .catch(e => console.warn('[FB] auto-push:', e.code || e));  // console เท่านั้น — ไม่ toast
   },
 
-  // ใช้ตอน sync ทั้งก้อน (auto-push การแก้ไขไม่ใช้ — แก้ไขต้องส่งขึ้นทับได้เสมอ)
-  _isOld(rec) {
-    return typeof DataRound !== 'undefined' && DataRound.since() && DataRound.isOld(rec);
-  },
-
   pushStation(st)         { if (st) this._pushDoc(this._col().doc(st.id), this._stData(st)); },
   pushInterview(stId, iv) { if (iv) this._pushDoc(this._col().doc(stId).collection('interviews').doc(iv.id), iv); },
 
@@ -126,7 +121,6 @@ const FB = {
 
     let stCount = 0;
     let ivCount = 0;
-    let skippedOld = 0;     // เก่ากว่ารอบเก็บข้อมูลปัจจุบัน
     let skippedGone = 0;    // จุดสำรวจถูกลบออกจากระบบแล้ว
 
     // ผู้สำรวจเขียน station ไม่ได้ → ถ้า parent ไม่มีบน cloud การเขียน interview
@@ -164,7 +158,6 @@ const FB = {
 
       // 1) เขียน station (admin ทั้งหมด · staff เฉพาะจุดของทีมตัวเอง)
       if (isAdmin || isStaff) {
-        if (this._isOld(st)) { skippedOld++; continue; }   // จุดเก่า → ข้ามทั้งจุดพร้อม interview
         const { interviews, ...stData } = st;
         addOp(stRef, { ...stData, _device: device, _syncedAt: syncedAt });
         stCount++;
@@ -173,7 +166,6 @@ const FB = {
       // 2) เขียน interviews (idempotent — doc id = iv.id)
       for (const iv of (st.interviews || [])) {
         if (!isAdmin && !isStaff && iv.surveyorName !== surveyorName) continue;
-        if (this._isOld(iv)) { skippedOld++; continue; }
         const ivRef = stRef.collection('interviews').doc(iv.id);
         addOp(ivRef, { ...iv, _device: device, _syncedAt: syncedAt });
         ivCount++;
@@ -183,7 +175,6 @@ const FB = {
 
     if (stCount === 0 && ivCount === 0) {
       if (skippedGone) throw new Error(`จุดสำรวจของข้อมูลในเครื่องถูกลบออกจากระบบแล้ว (${skippedGone} ราย) — ให้ผู้ดูแลสร้างจุดใหม่แล้วบันทึกใหม่`);
-      if (skippedOld)  throw new Error(`ข้อมูลในเครื่องเป็นข้อมูลเก่าก่อนรอบนี้ทั้งหมด (${skippedOld} รายการ) — ไม่มีอะไรให้ส่ง`);
       throw new Error('ไม่มีข้อมูลใหม่ที่จะ sync');
     }
 
@@ -193,7 +184,6 @@ const FB = {
 
     localStorage.setItem('_is_ri_last_sync', syncedAt);
     return (isAdmin ? `${stCount} จุด · ${ivCount} ราย` : `${ivCount} ราย`)
-         + (skippedOld  ? ` · ข้ามข้อมูลเก่า ${skippedOld}` : '')
          + (skippedGone ? ` · ข้ามจุดที่ถูกลบ ${skippedGone}` : '');
   },
 

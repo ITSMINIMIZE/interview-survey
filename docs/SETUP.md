@@ -25,7 +25,7 @@
 | localStorage หลัก | `hi_survey_v2` / `ri_survey_v1` | `is_hi_survey_v2` / `is_ri_survey_v1` |
 | cache สถานที่ | `bp_places_*` | `is_bp_places_*` |
 | ชื่อผู้สำรวจ/sync/device | `_surveyor_name`, `_device_id`, `_hi_last_sync` … | `_is_*` ทั้งหมด |
-| role / รอบเก็บข้อมูล | `_role_cache_v1`, `_data_round_v1`, `_supervisors_v1` | `_is_*` |
+| role / รายชื่อผู้ควบคุม | `_role_cache_v1`, `_supervisors_v1` | `_is_*` |
 | SW cache | `hi-v47-round` / `ri-v44-round` | `is-hi-v1` / `is-ri-v1` |
 | SW ลบ cache เก่า | ลบ**ทุก** cache ที่ไม่ใช่ของตัวเอง | ลบเฉพาะที่ขึ้นต้นด้วย `is-hi-` / `is-ri-` |
 | Email domain | `@banphai.local` | `@interview-survey.local` |

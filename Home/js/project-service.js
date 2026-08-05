@@ -6,7 +6,7 @@
 //     ├─ households/{}/members/{}/trips/{}   ← Home Interview
 //     ├─ roadside_stations/{}/interviews/{}  ← Roadside Interview
 //     ├─ places/{}                           ← คลังสถานที่ (แยกตามโครงการ)
-//     └─ config/{zones|zones_c*|data_round|supervisors}
+//     └─ config/{zones|zones_c*|supervisors}
 //
 //   users/{uid}          ← บัญชีระดับระบบ (role: admin | user)
 //   config/app           ← API keys (ใช้ร่วมทั้งระบบ)

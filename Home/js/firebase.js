@@ -93,9 +93,6 @@ const FB = {
       .catch(e => console.warn('[FB] auto-push:', e.code || e));  // console เท่านั้น — ไม่ toast
   },
 
-  // หมายเหตุ: auto-push (แก้ไขทีละรายการ) ส่งขึ้นเสมอ แม้เป็นระเบียนรอบก่อน
-  // — การแก้ไขคือเจตนาชัดเจนของผู้ใช้ ต้อง sync ทับใน DB ได้
-  // ส่วนการกด Sync ทั้งก้อนยังกรองข้อมูลเก่าออก (กันข้อมูลทดสอบไหลกลับทีละมากๆ)
   pushHousehold(hh)      { if (hh) this._pushDoc(this._col().doc(hh.id), this._hhData(hh)); },
   pushMember(hhId, m)    { if (m)  this._pushDoc(this._col().doc(hhId).collection('members').doc(m.id), this._memberData(m)); },
   pushTrip(hhId, mId, t) { if (t)  this._pushDoc(this._col().doc(hhId).collection('members').doc(mId).collection('trips').doc(t.id), t); },
@@ -108,14 +105,6 @@ const FB = {
     if (!this.db) throw new Error('Firebase ไม่พร้อม');
     let hhs = DB.getHouseholdsRaw();   // raw: ต้องส่ง flag _deleted ขึ้น cloud ด้วย
     if (value) hhs = hhs.filter(h => h[field] === value);
-    // กันข้อมูลเก่าก่อนรอบเก็บข้อมูลปัจจุบันย้อนขึ้น cloud
-    let skippedOld = 0;
-    if (typeof DataRound !== 'undefined' && DataRound.since()) {
-      const before = hhs.length;
-      hhs = hhs.filter(h => !DataRound.isOld(h));
-      skippedOld = before - hhs.length;
-    }
-    if (!hhs.length && skippedOld) throw new Error(`ข้อมูลในเครื่องเป็นข้อมูลเก่าก่อนรอบนี้ทั้งหมด (${skippedOld} หลัง) — ไม่มีอะไรให้ส่ง`);
     if (!hhs.length) throw new Error('ไม่มีข้อมูลที่จะ sync');
 
     const device   = this.deviceId();
@@ -160,8 +149,7 @@ const FB = {
       await this._withTimeout(b.commit());
     }
     localStorage.setItem('_is_hi_last_sync', syncedAt);
-    return `${hhCount} ครัวเรือน · ${mCount} สมาชิก · ${tCount} เที่ยว`
-         + (skippedOld ? ` · ข้ามข้อมูลเก่า ${skippedOld} หลัง` : '');
+    return `${hhCount} ครัวเรือน · ${mCount} สมาชิก · ${tCount} เที่ยว`;
   },
 
   // ===== PULL =====

@@ -17,8 +17,7 @@ let db = null, auth = null;
 let households = [];
 let stations   = [];
 let charts = {};
-let ME = null;
-let ROUND = { since: '', label: '' };   // รอบเก็บข้อมูลปัจจุบัน (config/data_round)          // บัญชีที่ login: { uid, role, supervisorName, displayName }
+let ME = null;            // บัญชีที่ login: { uid, role, supervisorName, displayName }
 let leafletMap = null;
 let rawRenderer = null;   // canvas renderer สำหรับโหมดพิกัดจริง
 let desireLayer = null;
@@ -174,17 +173,6 @@ async function resolveRole(user) {
   } catch (e) { return null; }
 }
 const isStaff = () => !!ME && ME.role === 'staff';
-// ระเบียนเก่ากว่ารอบเก็บข้อมูลปัจจุบัน → ไม่นับเข้ารายงาน
-const isOldRec = r => !!ROUND.since && String(r.createdAt || '') < ROUND.since;
-
-async function loadRound() {
-  try {
-    const snap = await Project.cfg(db, 'data_round').get();
-    const d = snap.exists ? snap.data() : {};
-    ROUND = { since: d.since || '', label: d.label || '' };
-  } catch (e) { ROUND = { since: '', label: '' }; }
-}
-
 // staff เห็นเฉพาะทีมตัวเอง → ซ่อนส่วนที่เทียบข้ามทีม (เหลือแถวเดียว ไม่มีประโยชน์)
 function applyRoleUI() {
   const hide = isStaff();
@@ -243,7 +231,7 @@ async function pullHouseholds() {
     hh.members.forEach(m => m.trips.sort((a, b) => (a.seq || 0) - (b.seq || 0)));
   });
   // ตัดรายการที่ admin ลบออกจากระบบแล้ว (_deleted) ออกทุกระดับ — ครอบคลุมทุกแท็บในหน้าเดียว
-  return households.filter(hh => !hh._deleted && !isOldRec(hh)).map(hh => {
+  return households.filter(hh => !hh._deleted).map(hh => {
     hh.members = hh.members.filter(m => !m._deleted);
     hh.members.forEach(m => { m.trips = m.trips.filter(t => !t._deleted); });
     return hh;
@@ -270,8 +258,8 @@ async function pullRoadside() {
     });
   });
   // ตัดรายการที่ admin ลบออกจากระบบแล้ว (_deleted) ออก
-  return Object.values(map).filter(st => !st._deleted && !isOldRec(st)).map(st => {
-    st.interviews = st.interviews.filter(iv => !iv._deleted && !isOldRec(iv));
+  return Object.values(map).filter(st => !st._deleted).map(st => {
+    st.interviews = st.interviews.filter(iv => !iv._deleted);
     return st;
   });
 }
@@ -1236,14 +1224,12 @@ const App = {
     this._showLoading('กำลังโหลดข้อมูล Home...');
     try {
       await loadCloudZones();   // โซนจากระบบ (ถ้าเคยอัปโหลดผ่าน import-zones)
-      await loadRound();        // รอบเก็บข้อมูล — กรองข้อมูลเก่าออกจากรายงาน
       households = await pullHouseholds();
       this._setStatus('โหลด Home แล้ว · กำลังโหลด Roadside...');
       stations   = await pullRoadside();
       const ivCnt = allInterviews().length;
       this._setStatus(`✓ ${households.length} ครัวเรือน · ${stations.length} จุดสำรวจ · ${ivCnt} สัมภาษณ์`
-        + (isStaff() ? ' · เฉพาะทีมของคุณ' : '')
-        + (ROUND.since ? ` · รอบ: ${ROUND.label || new Date(ROUND.since).toLocaleDateString('th-TH')}` : ''));
+        + (isStaff() ? ' · เฉพาะทีมของคุณ' : ''));
       this._statusDot(true);
       this._hideLoading();
       this._renderAll();

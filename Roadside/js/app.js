@@ -49,7 +49,7 @@ const App = {
     if (typeof firebase !== 'undefined' && firebase.apps?.length) {
       FB.onAuthStateChanged(async user => {
         // รายชื่อผู้ควบคุมสำหรับ dropdown — ต้องมี token ก่อนถึงอ่าน config ได้ (anonymous ก็พอ)
-        if (user) { Supervisors.load(FB.db).catch(() => {}); DataRound.load(FB.db).then(() => this.render && this._role && this.render()).catch(() => {}); }
+        if (user) Supervisors.load(FB.db).catch(() => {});
         if (this._role || this._bootHandled) return;
         // anonymous = ผู้สำรวจ/ยังไม่ login → ไปหน้าเลือกบทบาท
         if (!user || user.isAnonymous) { this._showLoginGate(); return; }
@@ -389,57 +389,6 @@ const App = {
 
 
 
-  // ระเบียนของรอบก่อน: แก้ไขแล้ว sync ทับใน DB ได้ปกติ
-  // แต่รายงาน/Dashboard จะไม่นับเข้ารอบปัจจุบัน — ต้องบอกให้ผู้ใช้รู้
-  _oldWarn(rec) {
-    return (typeof DataRound !== 'undefined' && DataRound.isOld(rec))
-      ? ' · 📦 เป็นข้อมูลรอบก่อน (ไม่นับเข้ารายงานรอบนี้)' : '';
-  },
-
-  // ===== แถบเตือน: ข้อมูลเก่าก่อนรอบเก็บข้อมูลปัจจุบัน / นาฬิกาเครื่องผิด =====
-  _roundBannerHTML() {
-    if (typeof DataRound === 'undefined') return '';
-    let html = '';
-    // นาฬิกาเครื่องผิด = ข้อมูลที่บันทึกใหม่จะถูกสแตมป์เป็นเวลาเก่าแล้วส่งขึ้นระบบไม่ได้
-    if (DataRound.clockLooksWrong()) {
-      html += `<div style="background:#fef2f2;border:1px solid var(--danger);border-radius:10px;
-                 padding:12px 14px;margin-bottom:14px;color:var(--danger);font-weight:600;font-size:14px;">
-        ⚠️ วันที่-เวลาของเครื่องนี้ไม่ถูกต้อง — กรุณาตั้งวันที่ให้ตรงก่อนเก็บข้อมูล
-        <div style="font-weight:400;font-size:12px;margin-top:3px;">ไม่งั้นข้อมูลที่บันทึกจะถูกระบบมองว่าเป็นข้อมูลเก่าและส่งขึ้นระบบไม่ได้</div>
-      </div>`;
-    }
-    const since = DataRound.since();
-    if (!since) return html;
-    const n = DB.countOlderThan(since);
-    if (!n) return html;
-    const d = new Date(since).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
-    html += `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;
-               padding:12px 14px;margin-bottom:14px;font-size:14px;">
-      <div style="font-weight:700;color:#92400e;">📦 มีข้อมูลเก่าค้างในเครื่องนี้ ${n} รายการ</div>
-      <div style="font-size:12px;color:var(--gray-600);margin-top:3px;">
-        เป็นข้อมูลก่อนรอบเก็บข้อมูลปัจจุบัน (${this.esc(d)}) — <b>จะไม่ถูกส่งขึ้นระบบ</b>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-        ${this._canManage() ? `<button class="btn btn-ghost btn-sm" onclick="App.exportData()">⬇ สำรองเป็น Excel ก่อน</button>` : ''}
-        <button class="btn btn-danger btn-sm" onclick="App.clearOldData()">🗑 ล้างข้อมูลเก่าออกจากเครื่อง</button>
-      </div>
-    </div>`;
-    return html;
-  },
-
-  clearOldData() {
-    const since = DataRound.since();
-    if (!since) return;
-    const n = DB.countOlderThan(since);
-    if (!n) { this.toast('ไม่มีข้อมูลเก่าในเครื่อง', 'success'); return; }
-    if (!confirm(`ล้างข้อมูลเก่า ${n} รายการออกจากเครื่องนี้?\n\n`
-      + `• เป็นข้อมูลก่อนรอบเก็บข้อมูลปัจจุบัน ซึ่งส่งขึ้นระบบไม่ได้อยู่แล้ว\n`
-      + `• ข้อมูลของรอบปัจจุบันไม่ถูกแตะ\n`
-      + `• ถ้ายังไม่ได้สำรอง กดยกเลิกแล้ว Export ก่อน`)) return;
-    const removed = DB.clearOlderThan(since);
-    this.toast(`ล้างข้อมูลเก่า ${removed} รายการแล้ว`, 'success');
-    this.render();
-  },
 
   // ===================== PAGE: HOME =====================
   pageHome() {
@@ -511,7 +460,6 @@ const App = {
         </div>
       </div>
 
-      ${this._roundBannerHTML()}
 
       <div class="sec-header">
         <div>
@@ -969,8 +917,7 @@ const App = {
     const st = DB.updateStation(id, data);
     if (this._canManage()) this._autoPush(() => FB.pushStation(st));  // rules: ผู้สำรวจเขียน station ไม่ได้
     this.closeModal();
-    const w = this._oldWarn(st);
-    this.toast('บันทึกข้อมูลจุดสำรวจแล้ว' + w, w ? 'warning' : 'success');
+    this.toast('บันทึกข้อมูลจุดสำรวจแล้ว', 'success');
     this.render();
   },
 
@@ -1228,8 +1175,7 @@ const App = {
 
     const iv = DB.updateInterview(this.stId, ivId, data);
     this._autoPush(() => FB.pushInterview(this.stId, iv));
-    const w = this._oldWarn(iv);
-    this.toast('แก้ไขการสำรวจแล้ว' + w, w ? 'warning' : 'success');
+    this.toast('แก้ไขการสำรวจแล้ว', 'success');
     this.closeModal();
     this.navigate('station', this.stId);
   },

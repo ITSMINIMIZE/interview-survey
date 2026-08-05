@@ -355,21 +355,7 @@ const DB = {
     return out.sort((a, b) => (b.at || '').localeCompare(a.at || ''));
   },
 
-  // ล้างเฉพาะข้อมูลเก่าก่อนรอบเก็บข้อมูลปัจจุบัน (createdAt < since) — ของใหม่ไม่แตะ
-  clearOlderThan(sinceIso) {
-    if (!sinceIso) return 0;
-    const d = this.load();
-    const before = d.households.length;
-    d.households = d.households.filter(h => String(h.createdAt || '') >= sinceIso);
-    this.save();
-    return before - d.households.length;
-  },
 
-  // จำนวนบ้านเก่าที่ยังค้างในเครื่อง
-  countOlderThan(sinceIso) {
-    if (!sinceIso) return 0;
-    return this.load().households.filter(h => String(h.createdAt || '') < sinceIso).length;
-  },
 
   clearMyData(surveyorName) {
     const d = this.load();

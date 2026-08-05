@@ -46,7 +46,7 @@ const App = {
     if (typeof firebase !== 'undefined' && firebase.apps?.length) {
       FB.onAuthStateChanged(async user => {
         // รายชื่อผู้ควบคุมสำหรับ dropdown — ต้องมี token ก่อนถึงอ่าน config ได้ (anonymous ก็พอ)
-        if (user) { Supervisors.load(FB.db).catch(() => {}); DataRound.load(FB.db).then(() => this.render && this._role && this.render()).catch(() => {}); }
+        if (user) Supervisors.load(FB.db).catch(() => {});
         if (this._role || this._bootHandled) return; // เข้าระบบแล้ว ไม่ต้องทำซ้ำ
         // anonymous = ผู้สำรวจ/ยังไม่ login → ไปหน้าเลือกบทบาท
         if (!user || user.isAnonymous) { this._showLoginGate(); return; }
@@ -372,57 +372,6 @@ const App = {
 
 
 
-  // ระเบียนของรอบก่อน: แก้ไขแล้ว sync ทับใน DB ได้ปกติ
-  // แต่รายงาน/Dashboard จะไม่นับเข้ารอบปัจจุบัน — ต้องบอกให้ผู้ใช้รู้
-  _oldWarn(rec) {
-    return (typeof DataRound !== 'undefined' && DataRound.isOld(rec))
-      ? ' · 📦 เป็นข้อมูลรอบก่อน (ไม่นับเข้ารายงานรอบนี้)' : '';
-  },
-
-  // ===== แถบเตือน: ข้อมูลเก่าก่อนรอบเก็บข้อมูลปัจจุบัน / นาฬิกาเครื่องผิด =====
-  _roundBannerHTML() {
-    if (typeof DataRound === 'undefined') return '';
-    let html = '';
-    // นาฬิกาเครื่องผิด = ข้อมูลที่บันทึกใหม่จะถูกสแตมป์เป็นเวลาเก่าแล้วส่งขึ้นระบบไม่ได้
-    if (DataRound.clockLooksWrong()) {
-      html += `<div style="background:#fef2f2;border:1px solid var(--danger);border-radius:10px;
-                 padding:12px 14px;margin-bottom:14px;color:var(--danger);font-weight:600;font-size:14px;">
-        ⚠️ วันที่-เวลาของเครื่องนี้ไม่ถูกต้อง — กรุณาตั้งวันที่ให้ตรงก่อนเก็บข้อมูล
-        <div style="font-weight:400;font-size:12px;margin-top:3px;">ไม่งั้นข้อมูลที่บันทึกจะถูกระบบมองว่าเป็นข้อมูลเก่าและส่งขึ้นระบบไม่ได้</div>
-      </div>`;
-    }
-    const since = DataRound.since();
-    if (!since) return html;
-    const n = DB.countOlderThan(since);
-    if (!n) return html;
-    const d = new Date(since).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
-    html += `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;
-               padding:12px 14px;margin-bottom:14px;font-size:14px;">
-      <div style="font-weight:700;color:#92400e;">📦 มีข้อมูลเก่าค้างในเครื่องนี้ ${n} รายการ</div>
-      <div style="font-size:12px;color:var(--gray-600);margin-top:3px;">
-        เป็นข้อมูลก่อนรอบเก็บข้อมูลปัจจุบัน (${this.esc(d)}) — <b>จะไม่ถูกส่งขึ้นระบบ</b>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-        ${this._canManage() ? `<button class="btn btn-ghost btn-sm" onclick="App.exportData()">⬇ สำรองเป็น Excel ก่อน</button>` : ''}
-        <button class="btn btn-danger btn-sm" onclick="App.clearOldData()">🗑 ล้างข้อมูลเก่าออกจากเครื่อง</button>
-      </div>
-    </div>`;
-    return html;
-  },
-
-  clearOldData() {
-    const since = DataRound.since();
-    if (!since) return;
-    const n = DB.countOlderThan(since);
-    if (!n) { this.toast('ไม่มีข้อมูลเก่าในเครื่อง', 'success'); return; }
-    if (!confirm(`ล้างข้อมูลเก่า ${n} รายการออกจากเครื่องนี้?\n\n`
-      + `• เป็นข้อมูลก่อนรอบเก็บข้อมูลปัจจุบัน ซึ่งส่งขึ้นระบบไม่ได้อยู่แล้ว\n`
-      + `• ข้อมูลของรอบปัจจุบันไม่ถูกแตะ\n`
-      + `• ถ้ายังไม่ได้สำรอง กดยกเลิกแล้ว Export ก่อน`)) return;
-    const removed = DB.clearOlderThan(since);
-    this.toast(`ล้างข้อมูลเก่า ${removed} รายการแล้ว`, 'success');
-    this.render();
-  },
 
   // ===================== PAGE: HOME =====================
   pageHome() {
@@ -457,7 +406,6 @@ const App = {
         </div>
       </div>
 
-      ${this._roundBannerHTML()}
 
       <div class="sec-header">
         <div>
@@ -518,7 +466,6 @@ const App = {
                 ${noTraveler ? '<span class="tag" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;">⚠️ ยังไม่สมบูรณ์</span>' : ''}
                 ${homeNoCo ? '<span class="tag" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;">📍 บ้านไม่มีพิกัด</span>' : ''}
                 ${tripNoCo ? '<span class="tag" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;">📍 เที่ยวไม่มีพิกัด</span>' : ''}
-                ${(typeof DataRound !== 'undefined' && DataRound.isOld(hh)) ? '<span class="tag" style="background:#e5e7eb;color:#4b5563;border:1px solid #9ca3af;">📦 รอบก่อน</span>' : ''}
                 ${mapCo ? '<span class="tag" style="background:#ffedd5;color:#9a3412;border:1px solid #fdba74;" title="พิกัดจากแผนที่/พิมพ์เอง ไม่ใช่ GPS ที่จุดจริง — ควรสุ่มตรวจ">🗺 พิกัดจากแผนที่</span>' : ''}
                 <span class="tag tag-blue">👥 ${totM} คน</span>
                 <span class="tag tag-green">🚗 ${t} เที่ยว</span>
@@ -918,10 +865,9 @@ const App = {
     if (memberSum > 0 && memberSum > (+(updatedHH?.householdIncome) || 0)) {
       const savedHH = DB.updateHousehold(this.hhId, { householdIncome: memberSum });
       this._autoPush(() => FB.pushHousehold(savedHH));  // บันทึกนี้แตะ 2 doc (member + household)
-      this.toast(`บันทึกแล้ว — อัพเดทรายได้ครัวเรือนเป็น ${memberSum.toLocaleString()} บาท` + this._oldWarn(updatedHH), 'success');
+      this.toast(`บันทึกแล้ว — อัพเดทรายได้ครัวเรือนเป็น ${memberSum.toLocaleString()} บาท`, 'success');
     } else {
-      const w = this._oldWarn(DB.getHousehold(this.hhId));
-      this.toast('บันทึกข้อมูลบุคคลแล้ว' + w, w ? 'warning' : 'success');
+      this.toast('บันทึกข้อมูลบุคคลแล้ว', 'success');
     }
     // ไปหน้าการเดินทางต่อเลย + เปิดฟอร์มการเดินทางครั้งแรกให้อัตโนมัติ
     this.memberTab = 'trips';
@@ -1301,7 +1247,7 @@ const App = {
     const hh = DB.updateHousehold(id, data);
     this._autoPush(() => FB.pushHousehold(hh));
     this.closeModal();
-    this.toast('บันทึกข้อมูลบ้านแล้ว' + this._oldWarn(hh), this._oldWarn(hh) ? 'warning' : 'success');
+    this.toast('บันทึกข้อมูลบ้านแล้ว', 'success');
     this.render();
   },
 
@@ -1896,13 +1842,12 @@ const App = {
     };
 
     let savedTrip;
-    const oldW = this._oldWarn(DB.getHousehold(this.hhId));
     if (this.editingTripId) {
       savedTrip = DB.updateTrip(this.hhId, this.memberId, this.editingTripId, data);
-      this.toast('แก้ไขการเดินทางแล้ว' + oldW, oldW ? 'warning' : 'success');
+      this.toast('แก้ไขการเดินทางแล้ว', 'success');
     } else {
       savedTrip = DB.addTrip(this.hhId, this.memberId, data);
-      this.toast('เพิ่มการเดินทางแล้ว' + oldW, oldW ? 'warning' : 'success');
+      this.toast('เพิ่มการเดินทางแล้ว', 'success');
     }
     this._autoPush(() => FB.pushTrip(this.hhId, this.memberId, savedTrip));
     this.editingTripId = null;

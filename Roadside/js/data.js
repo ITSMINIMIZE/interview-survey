@@ -285,34 +285,6 @@ const DB = {
     return out.sort((a, b) => (b.at || '').localeCompare(a.at || ''));
   },
 
-  // ล้างเฉพาะข้อมูลเก่าก่อนรอบเก็บข้อมูลปัจจุบัน — ทั้งจุดสำรวจเก่าและ interview เก่าในจุดใหม่
-  clearOlderThan(sinceIso) {
-    if (!sinceIso) return 0;
-    const d = this.load();
-    let removed = 0;
-    const keep = [];
-    d.stations.forEach(st => {
-      if (String(st.createdAt || '') < sinceIso) { removed += 1 + (st.interviews || []).length; return; }
-      const before = (st.interviews || []).length;
-      st.interviews = (st.interviews || []).filter(iv => String(iv.createdAt || '') >= sinceIso);
-      removed += before - st.interviews.length;
-      keep.push(st);
-    });
-    d.stations = keep;
-    this.save();
-    return removed;
-  },
-
-  countOlderThan(sinceIso) {
-    if (!sinceIso) return 0;
-    let n = 0;
-    this.load().stations.forEach(st => {
-      if (String(st.createdAt || '') < sinceIso) { n += 1 + (st.interviews || []).length; return; }
-      n += (st.interviews || []).filter(iv => String(iv.createdAt || '') < sinceIso).length;
-    });
-    return n;
-  },
-
   clearMyInterviews(surveyorName) {
     this.load().stations.forEach(st => {
       st.interviews = st.interviews.filter(iv => iv.surveyorName !== surveyorName);
