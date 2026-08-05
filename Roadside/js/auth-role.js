@@ -55,7 +55,9 @@ const Role = {
       email:       user.email || '',
       username:    d.username || (user.email || '').split('@')[0],
       globalRole,
-      displayName: d.displayName || d.username || ''
+      displayName: d.displayName || d.username || '',
+      nickname:    d.nickname || '',
+      phone:       d.phone || ''
     };
 
     // ---- admin ระดับระบบ: ผ่านทุกโครงการ ----

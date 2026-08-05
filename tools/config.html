@@ -36,7 +36,7 @@
 </head>
 <body>
 <div class="card">
-  <a href="index.html" style="display:inline-block;margin-bottom:14px;color:#94a3b8;text-decoration:none;font-size:14px;font-weight:600;">← กลับไปหน้าเครื่องมือ</a>
+  <a href="../index.html" style="display:inline-block;margin-bottom:14px;color:#94a3b8;text-decoration:none;font-size:14px;font-weight:600;">← กลับหน้าหลัก</a>
   <h1>🔑 App Config — API Keys</h1>
   <div class="sub">จัดการ API key ที่ใช้ทั้ง Roadside + Home (เก็บใน Firestore <code>config/app</code>) — แก้ที่นี่ที่เดียว ทุกเครื่องได้ค่าใหม่โดยไม่ต้องแก้โค้ด</div>
 
@@ -93,6 +93,12 @@ const db = firebase.firestore();
 const auth = firebase.auth();
 const EMAIL_DOMAIN = '@interview-survey.local';
 
+// อีเมลของผู้ใช้ปัจจุบันแบบสั้น — currentUser อาจมีอยู่แต่ email เป็น null (anonymous)
+function meEmail(){
+  var u = (typeof auth !== 'undefined' && auth) ? auth.currentUser : null;
+  return (u && u.email) ? u.email.replace(EMAIL_DOMAIN,'') : '';
+}
+
 const $ = id => document.getElementById(id);
 function msg(el, text, cls){ el.className = 'msg ' + (cls||'info'); el.textContent = text; }
 
@@ -134,7 +140,7 @@ async function doSave(){
       google_places_key: $('gk').value.trim(),
       longdo_key:        $('lk').value.trim(),
       updated_at:        new Date().toISOString(),
-      updated_by:        auth.currentUser.email.replace(EMAIL_DOMAIN,'')
+      updated_by:        meEmail()
     }, { merge: true });
     msg($('saveMsg'),'✓ บันทึกแล้ว — มีผลในแอปภายใน ~30 นาที (หรือเปิดแอปใหม่)','ok');
   } catch(e){ msg($('saveMsg'),'บันทึกไม่สำเร็จ: '+e.message,'err'); }

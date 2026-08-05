@@ -157,7 +157,12 @@
       <a class="sb-link" href="tools/data-round.html">🗓 รอบเก็บข้อมูล</a>
       <a class="sb-link" href="tools/import-zones.html">🗺 นำเข้าโซน</a>
       <a class="sb-link" href="tools/config.html">🔑 ตั้งค่า API key</a>
-      <a class="sb-link" href="tools/">🧰 เครื่องมือทั้งหมด</a>
+
+      <div class="sb-group">ข้อมูลทดสอบ</div>
+      <a class="sb-link" href="tools/seed-places.html">📍 นำเข้าคลังสถานที่</a>
+      <a class="sb-link" href="tools/seed-home.html">🏘 สร้างข้อมูลทดสอบ Home</a>
+      <a class="sb-link" href="tools/seed-roadside.html">🚦 สร้างข้อมูลทดสอบ Roadside</a>
+      <a class="sb-link" href="tools/cleanup-seed.html">🧹 ลบข้อมูลทดสอบ</a>
     </div>
 
     <div class="sb-foot">
@@ -272,12 +277,13 @@ async function loadMe(user) {
   const role = (d.role === 'staff') ? 'user' : (d.role || '');
   if (role !== 'admin' && role !== 'user') return null;
   return { uid: user.uid, email: user.email || '', role,
-           displayName: d.displayName || d.username || (user.email || '').split('@')[0] };
+           displayName: d.displayName || d.username || (user.email || '').split('@')[0],
+           nickname: d.nickname || '', phone: d.phone || '' };
 }
 
 // ---------- หน้าหลัก ----------
 async function renderMain() {
-  $('sbName').textContent = ME.displayName;
+  $('sbName').textContent = ME.displayName + (ME.nickname ? ' (' + ME.nickname + ')' : '');
   $('sbRole').textContent = ME.role === 'admin' ? 'ผู้ดูแลระบบ · เห็นทุกโครงการ' : 'ผู้ใช้ทั่วไป · เห็นโครงการที่ได้รับมอบหมาย';
   $('adminNav').classList.toggle('hidden', ME.role !== 'admin');
   $('btnNewProj').classList.toggle('hidden', ME.role !== 'admin');

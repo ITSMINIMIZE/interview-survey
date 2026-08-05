@@ -40,7 +40,7 @@
 </head>
 <body>
 <div class="wrap">
-  <a href="index.html" style="display:inline-block;margin-bottom:14px;color:#94a3b8;text-decoration:none;font-size:14px;font-weight:600;">← กลับไปหน้าเครื่องมือ</a>
+  <a href="../index.html" style="display:inline-block;margin-bottom:14px;color:#94a3b8;text-decoration:none;font-size:14px;font-weight:600;">← กลับหน้าหลัก</a>
 
   <div class="card">
     <h1>🗓 รอบเก็บข้อมูล</h1>
@@ -94,6 +94,12 @@ if (!firebase.apps.length) firebase.initializeApp(cfg);
 const db = firebase.firestore();
 const auth = firebase.auth();
 const EMAIL_DOMAIN = '@interview-survey.local';
+
+// อีเมลของผู้ใช้ปัจจุบันแบบสั้น — currentUser อาจมีอยู่แต่ email เป็น null (anonymous)
+function meEmail(){
+  var u = (typeof auth !== 'undefined' && auth) ? auth.currentUser : null;
+  return (u && u.email) ? u.email.replace(EMAIL_DOMAIN,'') : '';
+}
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -156,7 +162,7 @@ async function save(){
       since: iso,
       label: $('label').value.trim(),
       setAt: new Date().toISOString(),
-      setBy: auth.currentUser ? auth.currentUser.email.replace(EMAIL_DOMAIN,'') : ''
+      setBy: meEmail()
     });
     msg($('saveMsg'), '✅ ตั้งรอบแล้ว — เครื่องที่เปิดแอปครั้งถัดไป (ออนไลน์) จะได้ค่าใหม่', 'ok');
     await loadCurrent();
@@ -170,7 +176,7 @@ async function clearRound(){
     await Project.cfg(db,'data_round').set({
       since: '', label: '',
       setAt: new Date().toISOString(),
-      setBy: auth.currentUser ? auth.currentUser.email.replace(EMAIL_DOMAIN,'') : ''
+      setBy: meEmail()
     });
     msg($('saveMsg'), '✓ ยกเลิกการกรองแล้ว', 'ok');
     await loadCurrent();

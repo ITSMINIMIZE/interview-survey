@@ -37,7 +37,8 @@
 index.html (root)                     ← เมนู (Home/Roadside/Dashboard) + ไอคอน ⚙ มุมล่างขวา → tools/
 Dashboard/{index.html,js/dashboard.js,js/mapDashboard.js,js/zones.js}  ← analytics · login admin · อ่าน Firestore ตรง
 tools/auth-gate.js                    ← gate กลางทุกหน้า tools = บังคับ login Firebase admin (แทนรหัสฝัง client เดิม)
-tools/index.html                      ← รายการเครื่องมือ (gate = auth-gate.js)
+tools/projects.html                   ← จัดการโครงการ + แต่งตั้งผู้ควบคุม (gate = auth-gate.js)
+(เมนูเครื่องมือย้ายไป sidebar ในหน้าแรกแล้ว — tools/index.html ถูกลบ)
 tools/config.html                     ← admin แก้ API key (login) → Firestore config/app
 tools/seed-places.html                ← pre-seed สถานที่ (Excel import)
 tools/seed-roadside.html, seed-home.html, cleanup-seed.html  ← สร้าง/ลบ test data (เขียน Firestore แบบ nested)

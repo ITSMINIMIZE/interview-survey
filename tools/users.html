@@ -56,7 +56,7 @@
 </head>
 <body>
 <div class="wrap">
-  <a href="index.html" style="display:inline-block;margin-bottom:14px;color:#94a3b8;text-decoration:none;font-size:14px;font-weight:600;">← กลับไปหน้าเครื่องมือ</a>
+  <a href="../index.html" style="display:inline-block;margin-bottom:14px;color:#94a3b8;text-decoration:none;font-size:14px;font-weight:600;">← กลับหน้าหลัก</a>
 
   <div class="card">
     <h1>👥 จัดการบัญชีผู้ใช้</h1>
@@ -95,6 +95,18 @@
       <div class="field">
         <label>หมายเหตุ (ไม่บังคับ)</label>
         <input id="c_note" type="text" autocomplete="off" placeholder="เช่น เบอร์โทร / ทีม 2" />
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>ชื่อเล่น</label>
+        <input id="c_nick" type="text" autocomplete="off" placeholder="เช่น ชาย" />
+        <div class="hint">ใช้แสดงในระบบให้เรียกง่าย — ไม่ได้ใช้จับคู่ข้อมูล</div>
+      </div>
+      <div class="field">
+        <label>เบอร์โทร</label>
+        <input id="c_phone" type="tel" inputmode="tel" autocomplete="off" placeholder="เช่น 081-234-5678" />
+        <div class="hint">ไว้ติดต่อกลับเวลามีปัญหาหน้างาน</div>
       </div>
     </div>
     <div class="grid2">
@@ -148,6 +160,10 @@
           <select id="e_disabled"><option value="0">ใช้งานอยู่</option><option value="1">ปิดใช้งาน</option></select>
         </div>
       </div>
+      <div class="grid2">
+        <div class="field"><label>ชื่อเล่น</label><input id="e_nick" type="text" placeholder="เช่น ชาย" /></div>
+        <div class="field"><label>เบอร์โทร</label><input id="e_phone" type="tel" inputmode="tel" placeholder="เช่น 081-234-5678" /></div>
+      </div>
       <div class="field"><label>หมายเหตุ</label><input id="e_note" type="text" /></div>
       <div style="display:flex;gap:10px;margin-top:6px">
         <button class="btn btn-go" onclick="saveEdit()">💾 บันทึก</button>
@@ -192,6 +208,12 @@ if (!firebase.apps.length) firebase.initializeApp(cfg);
 const db = firebase.firestore();
 const auth = firebase.auth();
 const EMAIL_DOMAIN = '@interview-survey.local';
+
+// อีเมลของผู้ใช้ปัจจุบันแบบสั้น — currentUser อาจมีอยู่แต่ email เป็น null (anonymous)
+function meEmail(){
+  var u = (typeof auth !== 'undefined' && auth) ? auth.currentUser : null;
+  return (u && u.email) ? u.email.replace(EMAIL_DOMAIN,'') : '';
+}
 const SEC_APP  = '_userAdmin';
 const PENDING_KEY = '_is_pending_user_docs';
 
@@ -236,9 +258,24 @@ async function retryPending(uid){
   } catch(e){ alert('ยังบันทึกไม่สำเร็จ: ' + e.message); }
 }
 
+// ===== เบอร์โทร =====
+// เก็บเป็นตัวเลขล้วน (หาเจอง่าย ไม่ต้องเดารูปแบบ) แล้วค่อยจัดรูปตอนแสดง
+function normPhone(v){ return (v || '').replace(/[^0-9]/g, ''); }
+function phoneOk(v){
+  const d = normPhone(v);
+  if (!d) return true;                       // ไม่บังคับกรอก
+  return /^0[0-9]{8,9}$/.test(d);            // เบอร์ไทย: ขึ้นต้น 0 ยาว 9-10 หลัก
+}
+function phoneFmt(v){
+  const d = normPhone(v);
+  if (d.length === 10) return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
+  if (d.length === 9)  return d.slice(0,2) + '-' + d.slice(2,5) + '-' + d.slice(5);
+  return d;
+}
+
 // ===== เขียน users doc =====
 async function writeUserDoc(r){
-  const me = auth.currentUser ? auth.currentUser.email.replace(EMAIL_DOMAIN,'') : '';
+  const me = meEmail();
   await db.collection('users').doc(r.uid).set({
     uid:            r.uid,
     email:          r.email,
@@ -246,6 +283,8 @@ async function writeUserDoc(r){
     role:           r.role,
     supervisorName: normName(r.name),
     displayName:    normName(r.name),
+    nickname:       (r.nickname || '').trim(),
+    phone:          normPhone(r.phone),
     note:           r.note || '',
     disabled:       false,
     createdAt:      new Date().toISOString(),
@@ -271,9 +310,12 @@ async function doCreate(){
   const name = normName($('c_name').value);
   const pw   = $('c_pw').value, pw2 = $('c_pw2').value;
   const note = $('c_note').value.trim();
+  const nick = $('c_nick').value.trim();
+  const phone= $('c_phone').value.trim();
 
   if (!raw)                 return msg($('createMsg'), role === 'admin' ? 'กรอกชื่อผู้ใช้' : 'กรอกอีเมล', 'err');
   if (!name)                return msg($('createMsg'), 'กรอกชื่อ-นามสกุล', 'err');
+  if (!phoneOk(phone))      return msg($('createMsg'), 'เบอร์โทรไม่ถูกต้อง — ต้องขึ้นต้นด้วย 0 และยาว 9-10 หลัก', 'err');
   if (pw.length < 8)        return msg($('createMsg'), 'รหัสผ่านต้องยาวอย่างน้อย 8 ตัว', 'err');
   if (pw !== pw2)           return msg($('createMsg'), 'รหัสผ่านสองช่องไม่ตรงกัน', 'err');
   const email = raw.includes('@') ? raw : raw + EMAIL_DOMAIN;
@@ -289,14 +331,14 @@ async function doCreate(){
     msg($('createMsg'), 'กำลังสร้างบัญชี...', 'info');
     const cred = await secAuth().createUserWithEmailAndPassword(email, pw);
     const uid  = cred.user.uid;
-    const rec  = { uid, email, role, name, note };
+    const rec  = { uid, email, role, name, note, nickname: nick, phone };
     queuePending(rec);                                  // กันเขียน Firestore พลาด
     try { await secAuth().signOut(); } catch(_) {}      // เคลียร์ session รอง
 
     await writeUserDoc(rec);
     clearPending(uid); renderPending();
 
-    ['c_email','c_name','c_pw','c_pw2','c_note'].forEach(id => $(id).value = '');
+    ['c_email','c_name','c_pw','c_pw2','c_note','c_nick','c_phone'].forEach(id => $(id).value = '');
     msg($('createMsg'), `✅ สร้างบัญชี <b>${esc(email)}</b> (${role}) แล้ว — แจ้งรหัสผ่านให้เจ้าตัว`, 'ok');
     await loadUsers(); await rebuildSupervisors();
   } catch(e){
@@ -321,10 +363,11 @@ async function loadUsers(){
     $('cnt').textContent = `(${USERS.length} บัญชี · admin ${USERS.filter(u=>u.role==='admin'&&!u.disabled).length} · user ${USERS.filter(u=>u.role!=='admin'&&!u.disabled).length})`;
     $('tbl').innerHTML = USERS.length === 0
       ? '<tbody><tr><td style="color:#64748b">ยังไม่มีบัญชีในระบบ — สร้างบัญชี admin ของคุณเองก่อน (ดูกล่องด้านบน)</td></tr></tbody>'
-      : `<thead><tr><th>ชื่อ / ผู้ควบคุม</th><th>อีเมล</th><th>ระดับ</th><th>สถานะ</th><th></th></tr></thead>
+      : `<thead><tr><th>ชื่อ / ผู้ควบคุม</th><th>เบอร์โทร</th><th>อีเมล</th><th>ระดับ</th><th>สถานะ</th><th></th></tr></thead>
          <tbody>${USERS.map(u => `
            <tr class="${u.disabled ? 'off' : ''}">
-             <td><b>${esc(u.displayName || u.username)}</b>${u.note ? `<div style="font-size:11px;color:#64748b">${esc(u.note)}</div>` : ''}</td>
+             <td><b>${esc(u.displayName || u.username)}</b>${u.nickname ? ` <span style="color:#64748b;font-weight:400">(${esc(u.nickname)})</span>` : ''}${u.note ? `<div style="font-size:11px;color:#64748b">${esc(u.note)}</div>` : ''}</td>
+             <td style="font-size:12px;white-space:nowrap">${u.phone ? `<a href="tel:${esc(u.phone)}" style="color:#93c5fd;text-decoration:none">${esc(phoneFmt(u.phone))}</a>` : '<span style="color:#475569">—</span>'}</td>
              <td style="font-size:12px;color:#94a3b8">${esc(u.email)}</td>
              <td><span class="pill pill-${u.role}">${esc(u.role)}</span></td>
              <td id="st_${esc(u.uid)}">${u.disabled ? '<span class="pill pill-off">ปิดใช้งาน</span>' : '<span style="color:#34d399">ใช้งานอยู่</span>'}</td>
@@ -363,6 +406,8 @@ function openEdit(uid){
   EDITING = uid;
   $('e_name').value = u.displayName || '';
   $('e_role').value = u.role;
+  $('e_nick').value  = u.nickname || '';
+  $('e_phone').value = phoneFmt(u.phone || '');
   $('e_note').value = u.note || '';
   $('e_disabled').value = u.disabled ? '1' : '0';
   $('e_title').innerHTML = `แก้ไขบัญชี — <b>${esc(u.email)}</b>${u.uid === myUid() ? ' <span class="pill pill-staff">บัญชีของคุณ</span>' : ''}`;
@@ -376,7 +421,9 @@ async function saveEdit(){
   const name = normName($('e_name').value);
   const role = $('e_role').value;
   const disabled = $('e_disabled').value === '1';
+  const phone = $('e_phone').value.trim();
   if (!name) return msg($('editMsg'), 'กรอกชื่อ-นามสกุล', 'err');
+  if (!phoneOk(phone)) return msg($('editMsg'), 'เบอร์โทรไม่ถูกต้อง — ต้องขึ้นต้นด้วย 0 และยาว 9-10 หลัก', 'err');
 
   if (role !== u.role && u.role === 'admin') {
     const why = blockReason(u, 'demote');
@@ -392,9 +439,11 @@ async function saveEdit(){
   try {
     await db.collection('users').doc(u.uid).set({
       displayName: name, supervisorName: name, role, disabled,
+      nickname: $('e_nick').value.trim(),
+      phone: normPhone(phone),
       note: $('e_note').value.trim(),
       updatedAt: new Date().toISOString(),
-      updatedBy: auth.currentUser.email.replace(EMAIL_DOMAIN,'')
+      updatedBy: meEmail()
     }, { merge: true });
     closeEdit();
     await loadUsers(); await rebuildSupervisors();

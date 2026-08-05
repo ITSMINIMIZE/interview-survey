@@ -157,7 +157,8 @@ async function resolveRole(user) {
     // 'staff' ที่ค้างจากโครงสร้างเดิม = 'user'
     const globalRole = (d.role === 'staff') ? 'user' : (d.role || '');
     const base = { uid: user.uid, email: user.email || '', username: d.username || '',
-                   globalRole, displayName: d.displayName || d.username || '' };
+                   globalRole, displayName: d.displayName || d.username || '',
+                   nickname: d.nickname || '', phone: d.phone || '' };
 
     if (globalRole === 'admin')
       return { ...base, role: 'admin', supervisorName: d.supervisorName || '' };
