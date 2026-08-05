@@ -3,7 +3,7 @@
 // CACHE_PREFIX แยกของเราออกจากระบบเดิม และ activate ลบเฉพาะ cache ที่ขึ้นต้นด้วย prefix นี้
 // ห้ามลบ cache ที่ไม่มี prefix — นั่นคือของระบบเดิมที่ยังใช้งานจริงอยู่
 const CACHE_PREFIX  = 'is-hi-';
-const CACHE_VERSION = CACHE_PREFIX + 'v8-project-options';
+const CACHE_VERSION = CACHE_PREFIX + 'v9-apps-toggle';
 const CORE_ASSETS = [
   './',
   './index.html',

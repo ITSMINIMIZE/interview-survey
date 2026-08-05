@@ -92,6 +92,12 @@ const ProjectTools = {
     if (tab) this._tab = tab;
     this._g('ptModal').style.display = 'flex';
     this._g('ptProj').textContent = 'โครงการ: ' + (Project.meta ? Project.meta.name : Project.id());
+    // แท็บ/ปุ่มของแบบสอบถามที่โครงการไม่ได้เปิด ไม่ต้องโชว์
+    const apps = (Project.meta && Project.meta.apps) || {};
+    this._apps = { home: apps.home !== false, roadside: apps.roadside !== false };
+    this._g('ptTabs').querySelector('[data-tab="stations"]').style.display = this._apps.roadside ? '' : 'none';
+    if (!this._apps.roadside && this._tab === 'stations') this._tab = 'members';
+    this._formsApp = this._apps.roadside ? 'roadside' : 'home';
     // ซิงก์รายชื่อผู้ควบคุมทันทีที่เปิด — โครงการที่เพิ่งสร้างจะได้มี admin ให้เลือกเลย
     // (อ่าน users ได้เฉพาะ admin ตาม rules → staff ข้ามไป ใช้รายชื่อที่มีอยู่)
     if (typeof ME !== 'undefined' && ME && ME.role === 'admin') {
@@ -520,14 +526,26 @@ const ProjectTools = {
   },
 
   _formsApp: 'roadside',
+  _apps: { home: true, roadside: true },
   _optionsDoc: null,
   _draft: null,          // ชุดที่กำลังแก้อยู่ (ยังไม่บันทึก)
 
-  // ชุดไอคอนให้เลือก — ครอบคลุมของที่ใช้จริงในงานสำรวจ
-  ICONS: {
-    vehicleTypes:      ['🚲','🛵','🛺','🚗','🛻','🚐','🚌','🚚','🚛','🚜','🚕','🏍️','🚙','🚓','🚑','🚒','🛴','🚈','⛴️','🚘'],
-    purposeCards:      ['🏠','💼','📚','🏛️','🏥','📦','🛒','🍽️','🏖️','⛩️','🎓','🏭','🌾','⚽','🎬','🏦','✈️','🚉','💊','❓'],
-    locationTypeCards: ['🏠','🏫','🏥','🏢','🛒','🏭','🌾','🏖️','⛩️','🏘️','🏬','🏨','🏦','🚉','✈️','🏟️','🌳','🅿️','🏪','📍']
+  // ชุดไอคอนให้เลือก — แบ่งหมวด เลื่อนดูได้ · หมวดแรกคือของที่ตรงกับประเภทรายการนั้น
+  ICON_SETS: {
+    vehicleTypes: [
+      ['ยานพาหนะ', ['🚲','🛴','🛵','🏍️','🛺','🚗','🚕','🚙','🛻','🚐','🚌','🚎','🚑','🚒','🚓','🚚','🚛','🚜','🚟','🚠','🚡','🚋','🚈','🚝','🚞','🚂','🚃','🚄','🚅','🚆','🚇','🚉','✈️','🛩️','🚁','⛵','🛥️','🚤','⛴️','🛳️','🚢','🛶','🦽','🦼','🛞','⛽','🚏','🛣️','🛤️','🚧']],
+      ['ทั่วไป', ['📦','👤','👥','🧍','🏃','🚶','👷','🧰','⚙️','📍','🔧','⏱️','📊','📋','✅','❓','⭐','🔴','🟠','🟡','🟢','🔵','🟣','⚫','⚪','🟤']]
+    ],
+    purposeCards: [
+      ['กิจกรรม', ['🏠','🏡','💼','👔','📚','🎓','🏫','🏛️','🏥','💊','🩺','📦','🛒','🛍️','🍽️','☕','🍜','🏖️','🏝️','⛰️','🎣','⚽','🏀','🏋️','🚴','🏃','⛩️','🕌','⛪','🛕','🙏','🎬','🎤','🎮','🎨','🎪','💒','🎉','🛌','🧳']],
+      ['งาน/ธุระ', ['🏭','🏗️','🌾','🚜','🐄','🐟','🏦','🏧','📮','📞','⚖️','🚓','🚒','🎖️','🧾','💰','💵','📝','🗳️','🔨']],
+      ['ทั่วไป', ['🚗','🚌','🚚','👤','👥','👨‍👩‍👧','🐕','📍','⏰','🌙','☀️','❓','➕','⭐','🔴','🟠','🟡','🟢','🔵','🟣']]
+    ],
+    locationTypeCards: [
+      ['สถานที่', ['🏠','🏡','🏘️','🏢','🏬','🏪','🏫','🏥','🏨','🏦','🏭','🏗️','🏛️','⛩️','🕌','⛪','🛕','🏟️','🏰','🗼','⛲','🌳','🌲','🌴','🏞️','🏖️','🏝️','⛰️','🗻','🏕️','🌾','🚜','🐄','🏤','🏣','🏚️','🛖','🏙️','🌉','🌆']],
+      ['ขนส่ง/บริการ', ['🚉','🚏','🛣️','✈️','🛳️','⛽','🅿️','🛒','🛍️','🍽️','☕','💊','📮','📞','🏧','🚧','🚦','🛤️','⚓','🧭']],
+      ['ทั่วไป', ['📍','📌','🗺️','🧭','👤','👥','⭐','❓','➕','🔴','🟠','🟡','🟢','🔵','🟣','⚫','⚪','🟤','🔶','🔷']]
+    ]
   },
 
   KINDS: {
@@ -545,8 +563,8 @@ const ProjectTools = {
         ใช้ตอนโครงการมีชุดตัวเลือกต่างออกไป เช่น <b>ทางหลวงชนบท</b>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:14px">
-        <button class="pt-tab ${app==='roadside'?'on':''}" data-fapp="roadside">🚦 Roadside</button>
-        <button class="pt-tab ${app==='home'?'on':''}" data-fapp="home">🏠 Home</button>
+        ${this._apps.roadside ? `<button class="pt-tab ${app==='roadside'?'on':''}" data-fapp="roadside">🚦 Roadside</button>` : ''}
+        ${this._apps.home     ? `<button class="pt-tab ${app==='home'?'on':''}" data-fapp="home">🏠 Home</button>` : ''}
       </div>
       <div id="ptFormsBody"><div class="pt-empty">กำลังโหลด...</div></div>`;
     this._g('ptBody').querySelectorAll('[data-fapp]').forEach(b =>
@@ -667,34 +685,37 @@ const ProjectTools = {
     });
   },
 
-  // จานไอคอน — เลือกจากที่ให้ หรือพิมพ์เองก็ได้
+  // จานไอคอน — แบ่งหมวด เลื่อนดูได้ หรือพิมพ์เอง (อีโมจิอะไรก็ได้)
   _pickIcon(kind, idx, anchor) {
     document.getElementById('ptIconPop')?.remove();
+    const sets = this.ICON_SETS[kind] || this.ICON_SETS.purposeCards;
     const pop = document.createElement('div');
     pop.id = 'ptIconPop';
     pop.setAttribute('style',
       'position:fixed;z-index:9500;background:#2c2c2e;border:1px solid rgba(255,255,255,.14);' +
-      'border-radius:12px;padding:12px;box-shadow:0 12px 34px rgba(0,0,0,.5);max-width:280px');
+      'border-radius:12px;padding:12px;box-shadow:0 12px 34px rgba(0,0,0,.55);' +
+      'width:300px;max-height:340px;overflow:auto');
     pop.innerHTML =
-      `<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px">
-        ${(this.ICONS[kind] || []).map(ic =>
-          `<button data-ic="${ic}" style="font-size:19px;background:#1c1c1e;border:1px solid #3a3a3c;border-radius:8px;padding:6px;cursor:pointer">${ic}</button>`).join('')}
-      </div>
-      <div style="margin-top:9px;display:flex;gap:6px;align-items:center">
-        <input id="ptIconCustom" class="pt-in" style="width:70px;text-align:center" maxlength="4" placeholder="อื่นๆ" />
+      sets.map(([title, icons]) => `
+        <div style="font-size:11px;color:#8e8e93;font-weight:700;margin:2px 0 6px">${title}</div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:10px">
+          ${icons.map(ic => `<button data-ic="${ic}" title="${ic}"
+            style="font-size:18px;background:#1c1c1e;border:1px solid #3a3a3c;border-radius:7px;padding:5px 0;cursor:pointer">${ic}</button>`).join('')}
+        </div>`).join('') +
+      `<div style="position:sticky;bottom:-12px;background:#2c2c2e;padding-top:8px;border-top:1px solid #3a3a3c;display:flex;gap:6px;align-items:center">
+        <input id="ptIconCustom" class="pt-in" style="width:80px;text-align:center;font-size:17px" maxlength="4" placeholder="วางเอง" />
         <button class="pt-btn-g" id="ptIconOk">ใช้อันนี้</button>
-      </div>`;
+       </div>`;
     document.body.appendChild(pop);
     const r = anchor.getBoundingClientRect();
-    pop.style.left = Math.min(r.left, innerWidth - 300) + 'px';
-    pop.style.top  = Math.min(r.bottom + 6, innerHeight - pop.offsetHeight - 10) + 'px';
+    pop.style.left = Math.max(8, Math.min(r.left, innerWidth - 316)) + 'px';
+    pop.style.top  = Math.max(8, Math.min(r.bottom + 6, innerHeight - pop.offsetHeight - 10)) + 'px';
 
     const set = ic => { this._draft[kind][idx].icon = ic; pop.remove(); this._renderRows(kind); };
     pop.querySelectorAll('[data-ic]').forEach(b => b.onclick = () => set(b.dataset.ic));
-    pop.querySelector('#ptIconOk').onclick = () => {
-      const v = pop.querySelector('#ptIconCustom').value.trim();
-      if (v) set(v);
-    };
+    const inp = pop.querySelector('#ptIconCustom');
+    pop.querySelector('#ptIconOk').onclick = () => { const v = inp.value.trim(); if (v) set(v); };
+    inp.onkeydown = e => { if (e.key === 'Enter') { const v = inp.value.trim(); if (v) set(v); } };
     setTimeout(() => document.addEventListener('click', function h(e) {
       if (!pop.contains(e.target) && e.target !== anchor) { pop.remove(); document.removeEventListener('click', h); }
     }), 0);

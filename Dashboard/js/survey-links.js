@@ -108,6 +108,14 @@ const SurveyLinks = {
     document.getElementById('slProj').textContent =
       'โครงการ: ' + (Project.meta ? Project.meta.name : Project.id());
     document.getElementById('slMsg').style.display = 'none';
+    // ออกลิงก์ได้เฉพาะแบบสอบถามที่โครงการเปิดใช้ — ไม่งั้นแจกลิงก์ไปแล้วผู้สำรวจเปิดมาเจอหน้าเปล่า
+    const a = (Project.meta && Project.meta.apps) || {};
+    const sel = document.getElementById('slApp');
+    const opts = [];
+    if (a.home     !== false) opts.push('<option value="home">🏠 Home Interview — สัมภาษณ์ในบ้าน</option>');
+    if (a.roadside !== false) opts.push('<option value="roadside">🚦 Roadside Interview — สัมภาษณ์ริมทาง</option>');
+    sel.innerHTML = opts.join('');
+    document.getElementById('slCreate').disabled = !opts.length;
     await Promise.all([this._loadSupervisors(), this.refresh()]);
   },
 

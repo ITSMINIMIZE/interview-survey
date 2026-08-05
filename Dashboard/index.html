@@ -148,6 +148,13 @@
     /* คอลัมน์ซ้าย-ขวา (Road / Home) — grid ทำให้สองคอลัมน์สูงเท่ากันอยู่แล้ว
        จึงให้การ์ดใบล่าง (ตารางสรุป) ยืดเต็มพื้นที่ที่เหลือ ทั้งสองฝั่งจะจบเสมอกัน
        ไม่ว่าตารางจะมีกี่แถว · margin-bottom:0 เพราะระยะห่างคุมด้วย gap แล้ว */
+    /* โครงการที่เปิดแบบสอบถามไม่ครบ (เช่น ทช. เก็บแค่ริมทาง) — ซ่อนฝั่งที่ไม่ได้ใช้
+       ไม่งั้นหน้าจะเต็มไปด้วยช่องว่างและกราฟเปล่าที่ไม่มีวันมีข้อมูล */
+    body.no-home [data-app="home"],
+    body.no-roadside [data-app="roadside"] { display: none !important; }
+    /* เหลือฝั่งเดียวแล้วให้ยืดเต็มความกว้าง ไม่ใช่ค้างอยู่ครึ่งจอ */
+    body.no-home .split-rh, body.no-roadside .split-rh { grid-template-columns: 1fr; }
+
     .col-stack { display: flex; flex-direction: column; gap: 20px; }
     .col-stack > .card { margin-bottom: 0; }
     .col-stack > .card:last-child { flex: 1; }
@@ -298,7 +305,7 @@
 
   <!-- KPI Bar — แยก 2 ฝั่ง: ซ้าย Road · ขวา Home -->
   <div class="kpi-bar">
-    <div class="kpi-side">
+    <div class="kpi-side" data-app="roadside">
       <div class="kpi-side-label">🚗 ฝั่ง Road</div>
       <div class="kpi-side-cards">
         <div class="kpi-card">
@@ -318,7 +325,7 @@
         </div>
       </div>
     </div>
-    <div class="kpi-side">
+    <div class="kpi-side" data-app="home">
       <div class="kpi-side-label">🏠 ฝั่ง Home</div>
       <div class="kpi-side-cards">
         <div class="kpi-card">
@@ -351,9 +358,9 @@
 
   <!-- ── Tab: ติดตามงาน ── (ซ้าย: Road · ขวา: Home) -->
   <div class="tab-panel active" id="panel-progress">
-    <div class="grid-2">
+    <div class="grid-2 split-rh">
       <!-- ซ้าย: Roadside -->
-      <div class="col-stack">
+      <div class="col-stack" data-app="roadside">
         <div class="card">
           <div class="card-title">🚗 Road — รถที่สำรวจแยกตามจุด <span class="badge" id="badgeRoadsideStation"></span></div>
           <div class="chart-wrap"><canvas id="chartRoadByStation"></canvas></div>
@@ -364,7 +371,7 @@
         </div>
       </div>
       <!-- ขวา: Home -->
-      <div class="col-stack" id="cardHomeSupervisor">
+      <div class="col-stack" data-app="home" id="cardHomeSupervisor">
         <div class="card">
           <div class="card-title">🏠 Home — บ้านที่สำรวจแยกตามผู้ควบคุม <span class="badge" id="badgeHomeSurveyor"></span></div>
           <div class="chart-wrap"><canvas id="chartHomeBySupervisor"></canvas></div>
@@ -375,23 +382,23 @@
         </div>
       </div>
     </div>
-    <div class="grid-2">
+    <div class="grid-2 split-rh">
       <!-- ซ้าย: ผู้สำรวจ Road -->
-      <div class="card">
+      <div class="card" data-app="roadside">
         <div class="card-title">👤 สรุปรายผู้สำรวจ — Road <span class="badge" id="badgeRoadSurv"></span></div>
         <input type="text" id="roadSurvSearch" oninput="App.filterTable('roadPersonTable', this.value)" placeholder="🔍 ค้นหาชื่อผู้สำรวจ / ผู้ควบคุม..."
           style="width:100%;margin-bottom:12px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;" />
         <div style="overflow-x:auto"><div id="roadPersonTable"><p style="color:var(--muted)">กำลังโหลด...</p></div></div>
       </div>
       <!-- ขวา: ผู้สำรวจ Home -->
-      <div class="card">
+      <div class="card" data-app="home">
         <div class="card-title">👤 สรุปรายผู้สำรวจ — Home <span class="badge" id="badgeHomeSurv"></span></div>
         <input type="text" id="homeSurvSearch" oninput="App.filterTable('homePersonTable', this.value)" placeholder="🔍 ค้นหาชื่อผู้สำรวจ / ผู้ควบคุม..."
           style="width:100%;margin-bottom:12px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;" />
         <div style="overflow-x:auto"><div id="homePersonTable"><p style="color:var(--muted)">กำลังโหลด...</p></div></div>
       </div>
     </div>
-    <div class="card">
+    <div class="card" data-app="home">
       <div class="card-title">⚠️ ข้อมูลที่ไม่ครบ (Home) <span class="badge" id="badgeIncomplete"></span></div>
       <div id="incompleteTable"><p style="color:var(--muted)">กำลังตรวจสอบ...</p></div>
     </div>
@@ -403,8 +410,8 @@
       <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <span style="font-size:13px;font-weight:700;color:var(--muted)">แหล่งข้อมูล:</span>
         <div class="toggle-group">
-          <button class="toggle-btn active" id="odToggleHome" onclick="App.setODSource('home')">🏠 Home</button>
-          <button class="toggle-btn" id="odToggleRoadside" onclick="App.setODSource('roadside')">🚗 Roadside</button>
+          <button class="toggle-btn active" id="odToggleHome" data-app="home" onclick="App.setODSource('home')">🏠 Home</button>
+          <button class="toggle-btn" id="odToggleRoadside" data-app="roadside" onclick="App.setODSource('roadside')">🚗 Roadside</button>
           <button class="toggle-btn" id="odToggleAll" onclick="App.setODSource('all')">📊 ทั้งหมด</button>
         </div>
       </div>
@@ -438,8 +445,8 @@
           </div>
           <span class="map-controls-sep">|</span>
           <div class="toggle-group">
-            <button class="toggle-btn active" id="mapSrcHome" onclick="App.setMapSource('home')">🏠 Home</button>
-            <button class="toggle-btn" id="mapSrcRoadside" onclick="App.setMapSource('roadside')">🚗 Roadside</button>
+            <button class="toggle-btn active" id="mapSrcHome" data-app="home" onclick="App.setMapSource('home')">🏠 Home</button>
+            <button class="toggle-btn" id="mapSrcRoadside" data-app="roadside" onclick="App.setMapSource('roadside')">🚗 Roadside</button>
             <button class="toggle-btn" id="mapSrcAll" onclick="App.setMapSource('all')">📊 ทั้งหมด</button>
           </div>
           <button class="toggle-btn" id="mapFsBtn" onclick="App.toggleMapFullscreen()" title="ขยายเต็มจอ / ย่อ (Esc)">⛶ เต็มจอ</button>
@@ -497,8 +504,8 @@
       <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <span style="font-size:13px;font-weight:700;color:var(--muted)">แหล่งข้อมูล:</span>
         <div class="toggle-group">
-          <button class="toggle-btn active" id="peakToggleHome" onclick="App.setPeakSource('home')">🏠 Home (departureTime)</button>
-          <button class="toggle-btn" id="peakToggleRoadside" onclick="App.setPeakSource('roadside')">🚗 Roadside (interviewTime)</button>
+          <button class="toggle-btn active" id="peakToggleHome" data-app="home" onclick="App.setPeakSource('home')">🏠 Home (departureTime)</button>
+          <button class="toggle-btn" id="peakToggleRoadside" data-app="roadside" onclick="App.setPeakSource('roadside')">🚗 Roadside (interviewTime)</button>
           <button class="toggle-btn" id="peakToggleAll" onclick="App.setPeakSource('all')">📊 ทั้งหมด</button>
         </div>
       </div>
@@ -517,7 +524,7 @@
         <div id="peakPMSummary"><p style="color:var(--muted)">กำลังคำนวณ...</p></div>
       </div>
     </div>
-    <div class="card">
+    <div class="card" data-app="home">
       <div class="card-title">📊 Trip Rate (เที่ยว/คน/วัน)</div>
       <div id="tripRateTable"><p style="color:var(--muted)">กำลังคำนวณ...</p></div>
     </div>
@@ -525,28 +532,28 @@
 
   <!-- ── Tab: สถิติ ── -->
   <div class="tab-panel" id="panel-stats">
-    <div class="grid-2">
-      <div class="card">
+    <div class="grid-2 split-rh">
+      <div class="card" data-app="home">
         <div class="card-title">🚌 Modal Split (Home — ยานพาหนะที่ใช้)</div>
         <div class="chart-wrap"><canvas id="chartModalSplit"></canvas></div>
         <div id="chartModalSplitMsg"></div>
       </div>
-      <div class="card">
+      <div class="card" data-app="roadside">
         <div class="card-title">🚛 ประเภทยานพาหนะ (Roadside)</div>
         <div class="chart-wrap"><canvas id="chartVehicleType"></canvas></div>
       </div>
     </div>
-    <div class="grid-2">
-      <div class="card">
+    <div class="grid-2 split-rh">
+      <div class="card" data-app="home">
         <div class="card-title">🎯 วัตถุประสงค์การเดินทาง (Home)</div>
         <div class="chart-wrap"><canvas id="chartPurposeHome"></canvas></div>
       </div>
-      <div class="card">
+      <div class="card" data-app="roadside">
         <div class="card-title">🎯 วัตถุประสงค์ (Roadside)</div>
         <div class="chart-wrap"><canvas id="chartPurposeRoadside"></canvas></div>
       </div>
     </div>
-    <div class="grid-2">
+    <div class="grid-2" data-app="home">
       <div class="card">
         <div class="card-title">👥 Pyramid ประชากร (อายุ–เพศ)</div>
         <div class="chart-wrap"><canvas id="chartPyramid"></canvas></div>
@@ -556,12 +563,12 @@
         <div class="chart-wrap"><canvas id="chartIncome"></canvas></div>
       </div>
     </div>
-    <div class="grid-2">
-      <div class="card">
+    <div class="grid-2 split-rh">
+      <div class="card" data-app="home">
         <div class="card-title">🎓 ระดับการศึกษา (สมาชิก)</div>
         <div class="chart-wrap"><canvas id="chartEducation"></canvas></div>
       </div>
-      <div class="card">
+      <div class="card" data-app="roadside">
         <div class="card-title">📦 สินค้าขนส่ง (Roadside — รถบรรทุก)</div>
         <div id="cargoTable"><p style="color:var(--muted)">กำลังโหลด...</p></div>
       </div>

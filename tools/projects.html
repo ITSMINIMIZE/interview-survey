@@ -72,6 +72,17 @@
         </select>
       </div>
     </div>
+    <label>แบบสอบถามที่ใช้ในโครงการนี้ *</label>
+    <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:4px">
+      <label style="display:flex;align-items:center;gap:7px;font-size:14px;color:#e5e5ea;font-weight:400;margin:0;cursor:pointer">
+        <input type="checkbox" id="fAppRoadside" checked style="width:auto;margin:0" /> 🚦 Roadside — สัมภาษณ์ริมทาง
+      </label>
+      <label style="display:flex;align-items:center;gap:7px;font-size:14px;color:#e5e5ea;font-weight:400;margin:0;cursor:pointer">
+        <input type="checkbox" id="fAppHome" checked style="width:auto;margin:0" /> 🏠 Home — สัมภาษณ์ในบ้าน
+      </label>
+    </div>
+    <div class="hint">ฝั่งที่ไม่ได้เลือกจะถูกซ่อนใน Dashboard และออกลิงก์ให้ผู้สำรวจไม่ได้ · เปลี่ยนภายหลังได้</div>
+
     <label for="fArea">พื้นที่ / คำอธิบาย</label>
     <textarea id="fArea" placeholder="เช่น อ.บ้านไผ่ จ.ขอนแก่น"></textarea>
     <div class="actions">
@@ -161,7 +172,9 @@ async function load() {
           <div class="item-name">${esc(p.name || p.id)}
             <span class="pill ${p.status === 'paused' ? 'off' : 'on'}">${p.status === 'paused' ? 'พักไว้' : 'กำลังสำรวจ'}</span>
           </div>
-          <div class="item-meta">${esc(p.id)}${p.area ? ' · ' + esc(p.area) : ''} · staff ${(p.memberUids||[]).length} คน</div>
+          <div class="item-meta">${esc(p.id)}${p.area ? ' · ' + esc(p.area) : ''} · staff ${(p.memberUids||[]).length} คน · ${
+            [((p.apps||{}).roadside !== false) ? '🚦' : null, ((p.apps||{}).home !== false) ? '🏠' : null].filter(Boolean).join(' ') || '⚠️ ไม่ได้เลือกแบบสอบถาม'
+          }</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <a class="btn-ghost btn-sm" style="text-decoration:none;display:inline-block" href="../index.html?project=${encodeURIComponent(p.id)}">เปิด</a>
@@ -189,6 +202,9 @@ function startEdit(p) {
   $('fId').disabled  = true;          // รหัสคือ path ใน Firestore — เปลี่ยนไม่ได้
   $('fArea').value   = p.area || '';
   $('fStatus').value = p.status || 'active';
+  const a = p.apps || {};
+  $('fAppRoadside').checked = a.roadside !== false;   // ไม่ระบุ = เปิด (โครงการที่สร้างก่อนมีตัวเลือกนี้)
+  $('fAppHome').checked     = a.home     !== false;
   $('btnCancel').style.display = '';
   clearMsg($('formMsg'));
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -199,6 +215,7 @@ function resetForm() {
   $('formTitle').textContent = '➕ สร้างโครงการใหม่';
   $('fName').value = ''; $('fId').value = ''; $('fArea').value = '';
   $('fStatus').value = 'active';
+  $('fAppRoadside').checked = true; $('fAppHome').checked = true;
   $('fId').disabled = false;
   $('btnCancel').style.display = 'none';
   clearMsg($('formMsg'));
@@ -209,6 +226,9 @@ $('btnSave').addEventListener('click', async () => {
   const name = $('fName').value.trim();
   let   id   = $('fId').value.trim();
   if (!name) return msg($('formMsg'), 'ใส่ชื่อโครงการก่อน', 'err');
+  const apps = { roadside: $('fAppRoadside').checked, home: $('fAppHome').checked };
+  if (!apps.roadside && !apps.home)
+    return msg($('formMsg'), 'เลือกแบบสอบถามอย่างน้อย 1 อย่าง — ไม่งั้นโครงการนี้เก็บข้อมูลอะไรไม่ได้เลย', 'err');
   if (!id) { id = autoId(name); $('fId').value = id; }   // ว่าง = สร้างให้เลย ไม่ต้องเด้ง error
   if (!/^[a-z0-9-]+$/.test(id))
     return msg($('formMsg'),
@@ -220,7 +240,7 @@ $('btnSave').addEventListener('click', async () => {
   try {
     if (editingId) {
       await db.collection('projects').doc(editingId).set({
-        name, area: $('fArea').value.trim(), status: $('fStatus').value,
+        name, area: $('fArea').value.trim(), status: $('fStatus').value, apps,
         updatedAt: new Date().toISOString(), updatedBy: me
       }, { merge: true });
       okText = '✅ บันทึกการแก้ไขแล้ว';
@@ -229,7 +249,7 @@ $('btnSave').addEventListener('click', async () => {
       const exist = await db.collection('projects').doc(id).get();
       if (exist.exists) return msg($('formMsg'), 'รหัส "' + id + '" ถูกใช้แล้ว — ตั้งรหัสอื่น', 'err');
       await db.collection('projects').doc(id).set({
-        name, area: $('fArea').value.trim(), status: $('fStatus').value,
+        name, area: $('fArea').value.trim(), status: $('fStatus').value, apps,
         memberUids: [],
         createdAt: new Date().toISOString(), createdBy: me
       });

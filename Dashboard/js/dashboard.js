@@ -184,6 +184,32 @@ async function resolveRole(user) {
   } catch (e) { return null; }
 }
 const isStaff = () => !!ME && ME.role === 'staff';
+
+// โครงการเลือกได้ว่าเปิดแบบสอบถามอะไรบ้าง (เช่น ทช. เก็บแค่ริมทาง)
+// ไม่ระบุ = เปิดทั้งคู่ (โครงการเดิมที่สร้างก่อนมีตัวเลือกนี้)
+function projectApps(meta) {
+  const a = (meta && meta.apps) || {};
+  return { home: a.home !== false, roadside: a.roadside !== false };
+}
+
+function applyProjectApps(meta) {
+  const apps = projectApps(meta);
+  document.body.classList.toggle('no-home', !apps.home);
+  document.body.classList.toggle('no-roadside', !apps.roadside);
+  // ปุ่มเลือกแหล่งข้อมูลของฝั่งที่ปิดถูกซ่อนด้วย CSS แล้ว —
+  // แต่ค่าเริ่มต้นยังชี้ไปฝั่งนั้นอยู่ ต้องย้ายมาฝั่งที่เปิด ไม่งั้นเปิดมาเจอกราฟเปล่า
+  if (!apps.home && apps.roadside) {
+    App._odSrc = App._peakSrc = App._mapSrc = 'roadside';
+    ['odToggle','peakToggle'].forEach(p => {
+      document.getElementById(p + 'Home')?.classList.remove('active');
+      document.getElementById(p + 'Roadside')?.classList.add('active');
+    });
+    document.getElementById('mapSrcHome')?.classList.remove('active');
+    document.getElementById('mapSrcRoadside')?.classList.add('active');
+  } else if (!apps.roadside && apps.home) {
+    App._odSrc = App._peakSrc = App._mapSrc = 'home';
+  }
+}
 // staff เห็นเฉพาะทีมตัวเอง → ซ่อนส่วนที่เทียบข้ามทีม (เหลือแถวเดียว ไม่มีประโยชน์)
 function applyRoleUI() {
   const hide = isStaff();
@@ -1251,6 +1277,7 @@ const App = {
         const el = document.getElementById('dashLogo');
         if (el) el.textContent = '📊 ' + (m ? m.name : Project.id());
         if (m) document.title = m.name + ' — Dashboard';
+        applyProjectApps(m);
       }).catch(() => {});
       applyRoleUI();
       this.loadData();
