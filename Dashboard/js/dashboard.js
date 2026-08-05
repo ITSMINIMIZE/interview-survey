@@ -1122,6 +1122,17 @@ const App = {
     if (!Project.id()) { location.replace('../index.html'); return; }
 
     fbInit();
+
+    // กันจอค้างเป็นสีพื้นตลอด: ถ้า Firebase ไม่ตอบใน 8 วิ (เน็ตล่ม/SDK โหลดไม่ขึ้น)
+    // ให้เปิดฟอร์ม login ไปก่อน ดีกว่าปล่อยให้ผู้ใช้มองจอเปล่าโดยไม่รู้ว่าเกิดอะไร
+    setTimeout(() => {
+      const gate = document.getElementById('bootGate');
+      if (gate && !gate.classList.contains('hide')) {
+        gate.classList.add('hide');
+        document.getElementById('loginOverlay').classList.add('show');
+      }
+    }, 8000);
+
     // Chart.js global defaults
     Chart.defaults.color = '#98989d';
     Chart.defaults.font.family = 'Sarabun';
@@ -1129,7 +1140,8 @@ const App = {
     auth.onAuthStateChanged(async user => {
       const showLogin = (errText) => {
         ME = null;
-        document.getElementById('loginOverlay').style.display = 'flex';
+        document.getElementById('loginOverlay').classList.add('show');
+        document.getElementById('bootGate').classList.add('hide');   // รู้ผลแล้ว = เลิกคลุม
         document.getElementById('dashboardMain').style.display = 'none';
         const el = document.getElementById('loginError');
         if (el && errText) { el.textContent = errText; el.style.display = 'block'; }
@@ -1142,7 +1154,8 @@ const App = {
       if (!me) { await auth.signOut().catch(() => {});
                  showLogin('บัญชีนี้ยังไม่ได้รับสิทธิ์ หรือถูกปิดการใช้งาน — ติดต่อผู้ดูแลระบบ'); return; }
       ME = me;
-      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('loginOverlay').classList.remove('show');
+      document.getElementById('bootGate').classList.add('hide');
       document.getElementById('dashboardMain').style.display = 'block';
       set('headerUser', (me.displayName || me.username) + (me.role === 'staff' ? ' · ผู้ควบคุม' : ''));
       // header แสดงชื่อโครงการที่เปิดอยู่ — หน้านี้คือ "หน้าแรกของโครงการ" แล้ว

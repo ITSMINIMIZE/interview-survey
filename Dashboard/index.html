@@ -24,10 +24,22 @@
     body { font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 44px; }
 
     /* ── Login ── */
+    /* ⚠️ ต้องเป็น none ตั้งแต่แรก — Firebase กู้ session จาก IndexedDB แบบ async
+       ถ้าโชว์ฟอร์ม login ไว้ก่อน คนที่ login อยู่แล้วจะเห็นฟอร์มแวบขึ้นมาทุกครั้ง
+       ระหว่างรอ onAuthStateChanged (ดู #bootGate) */
     #loginOverlay {
       position: fixed; inset: 0; z-index: 1000;
+      background: var(--bg); display: none; align-items: center; justify-content: center;
+    }
+    #loginOverlay.show { display: flex; }
+
+    /* ฉากคลุมตอนบูต — คลุมไว้จนกว่าจะรู้ผลว่า login อยู่หรือยัง แล้วค่อยเปิดทางให้
+       หน้าที่ถูกต้อง (dashboard หรือ ฟอร์ม login) โดยไม่มีอะไรกระพริบระหว่างทาง */
+    #bootGate {
+      position: fixed; inset: 0; z-index: 1100;
       background: var(--bg); display: flex; align-items: center; justify-content: center;
     }
+    #bootGate.hide { display: none; }
     .login-box {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 12px; padding: 40px; width: 360px; max-width: 90vw;
@@ -220,6 +232,9 @@
   </style>
 </head>
 <body>
+
+<!-- ฉากคลุมตอนบูต — อยู่บนสุดของ body เพื่อให้วาดก่อนใครตั้งแต่ HTML มาถึง -->
+<div id="bootGate"><div class="spinner"></div></div>
 
 <!-- ── Login ── -->
 <div id="loginOverlay">
