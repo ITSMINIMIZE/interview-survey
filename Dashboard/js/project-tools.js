@@ -91,6 +91,11 @@ const ProjectTools = {
     if (tab) this._tab = tab;
     this._g('ptModal').style.display = 'flex';
     this._g('ptProj').textContent = 'โครงการ: ' + (Project.meta ? Project.meta.name : Project.id());
+    // ซิงก์รายชื่อผู้ควบคุมทันทีที่เปิด — โครงการที่เพิ่งสร้างจะได้มี admin ให้เลือกเลย
+    // (อ่าน users ได้เฉพาะ admin ตาม rules → staff ข้ามไป ใช้รายชื่อที่มีอยู่)
+    if (typeof ME !== 'undefined' && ME && ME.role === 'admin') {
+      try { await this._rebuildSupervisors(); } catch (_) {}
+    }
     await this._render();
   },
 
@@ -145,7 +150,8 @@ const ProjectTools = {
       if (u && !this._g('ptMName').value.trim())
         this._g('ptMName').value = u.displayName || u.username || '';
     };
-    await Promise.all([this._loadUsers(), this._loadMembers()]);
+    await this._loadUsers();      // ต้องมี this._users ก่อน _loadMembers จึงจะแสดง admin ได้
+    await this._loadMembers();
   },
 
   async _loadUsers() {
@@ -168,7 +174,23 @@ const ProjectTools = {
     try {
       const snap = await Project.col(db, 'members').get();
       this._members = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-      this._g('ptMList').innerHTML = this._members.length
+
+      // admin ขึ้นให้เห็นด้วย แต่ถอดออกไม่ได้ — เป็นผู้ควบคุมทุกโครงการโดยอัตโนมัติ
+      const admins = this._users.filter(u => u.role === 'admin' && !u.disabled);
+      const adminHTML = admins.length ? `
+        <div style="font-size:12.5px;color:#64748b;font-weight:700;margin:4px 0 9px">อัตโนมัติ — ผู้ดูแลระบบ</div>
+        ${admins.map(u => `
+          <div class="pt-row" style="opacity:.85">
+            <div>
+              <div style="font-size:14.5px;font-weight:700;color:#f1f5f9">${this._esc(this._supName(u))}
+                <span style="font-size:11px;font-weight:600;color:#93c5fd;background:rgba(37,99,235,.18);border:1px solid rgba(37,99,235,.35);padding:2px 9px;border-radius:99px;margin-left:7px">admin</span>
+              </div>
+              <div style="font-size:12px;color:#64748b;margin-top:2px">${this._esc(u.email || '')} · เป็นผู้ควบคุมทุกโครงการ</div>
+            </div>
+          </div>`).join('')}
+        <div style="font-size:12.5px;color:#64748b;font-weight:700;margin:16px 0 9px">แต่งตั้งในโครงการนี้</div>` : '';
+
+      this._g('ptMList').innerHTML = adminHTML + (this._members.length
         ? this._members.map(m => `
           <div class="pt-row">
             <div>
@@ -177,7 +199,7 @@ const ProjectTools = {
             </div>
             <button class="pt-btn-d" data-rm="${this._esc(m.uid)}">ถอดออก</button>
           </div>`).join('')
-        : '<div class="pt-empty">ยังไม่มีผู้ควบคุมในโครงการนี้</div>';
+        : '<div class="pt-empty">ยังไม่มีผู้ควบคุมที่แต่งตั้งเพิ่ม — admin ใช้ได้อยู่แล้ว</div>');
       this._g('ptMList').querySelectorAll('[data-rm]').forEach(b =>
         b.onclick = () => this._removeMember(b.dataset.rm));
     } catch (e) {
@@ -185,12 +207,37 @@ const ProjectTools = {
     }
   },
 
-  // สำเนารายชื่อให้ผู้สำรวจ (anonymous) อ่านได้ — rules ไม่เปิด members ให้เขา
+  // ชื่อที่ใช้เป็น "ผู้ควบคุม" ของบัญชีหนึ่ง
+  _supName(u) {
+    return (u.supervisorName || u.displayName || u.username || (u.email || '').split('@')[0] || '').trim();
+  },
+
+  // สำเนารายชื่อผู้ควบคุมให้ผู้สำรวจ (anonymous) อ่านได้ — rules ไม่เปิด members ให้เขา
+  //
+  // admin = ผู้ควบคุมของ "ทุกโครงการ" โดยอัตโนมัติ ไม่ต้องแต่งตั้งรายโครงการ
+  // ไม่งั้นโครงการที่เพิ่งสร้าง (ยังไม่มี member) จะไม่มีผู้ควบคุมให้เลือกเลย
+  // → สร้างจุดสำรวจไม่ได้ ตันตั้งแต่เริ่ม
   async _rebuildSupervisors() {
-    const snap = await Project.col(db, 'members').get();
-    const list = snap.docs.map(d => d.data()).filter(m => m.supervisorName)
-      .map(m => ({ key: m.supervisorName, name: m.displayName || m.supervisorName }));
+    const [memSnap, userSnap] = await Promise.all([
+      Project.col(db, 'members').get(),
+      db.collection('users').get()
+    ]);
+    const list = [];
+    const seen = new Set();
+    const push = (key, name) => {
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      list.push({ key, name: name || key });
+    };
+    // admin ก่อน (อัตโนมัติ) แล้วค่อย staff ที่แต่งตั้งไว้
+    userSnap.docs.map(d => d.data())
+      .filter(u => u.role === 'admin' && !u.disabled)
+      .forEach(u => push(this._supName(u), this._supName(u)));
+    memSnap.docs.map(d => d.data())
+      .forEach(m => push(m.supervisorName, m.displayName || m.supervisorName));
+
     await Project.cfg(db, 'supervisors').set({ list, updatedAt: new Date().toISOString() });
+    return list;
   },
 
   async _addMember() {
@@ -287,6 +334,10 @@ const ProjectTools = {
     try {
       const snap = await Project.cfg(db, 'supervisors').get();
       list = (snap.exists ? snap.data().list : []) || [];
+      // โครงการเพิ่งสร้าง / ยังไม่เคยซิงก์ → สร้างรายชื่อให้เลย (อย่างน้อยต้องมี admin)
+      if (!list.length && typeof ME !== 'undefined' && ME && ME.role === 'admin') {
+        list = await this._rebuildSupervisors();
+      }
     } catch (_) {}
     this._g('ptStSup').innerHTML = list.length
       ? '<option value="">— เลือกผู้ควบคุม —</option>' +
