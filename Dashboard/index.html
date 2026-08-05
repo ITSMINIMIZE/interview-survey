@@ -144,6 +144,13 @@
 
     /* Grids */
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+    /* คอลัมน์ซ้าย-ขวา (Road / Home) — grid ทำให้สองคอลัมน์สูงเท่ากันอยู่แล้ว
+       จึงให้การ์ดใบล่าง (ตารางสรุป) ยืดเต็มพื้นที่ที่เหลือ ทั้งสองฝั่งจะจบเสมอกัน
+       ไม่ว่าตารางจะมีกี่แถว · margin-bottom:0 เพราะระยะห่างคุมด้วย gap แล้ว */
+    .col-stack { display: flex; flex-direction: column; gap: 20px; }
+    .col-stack > .card { margin-bottom: 0; }
+    .col-stack > .card:last-child { flex: 1; }
     .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
     @media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
 
@@ -346,7 +353,7 @@
   <div class="tab-panel active" id="panel-progress">
     <div class="grid-2">
       <!-- ซ้าย: Roadside -->
-      <div style="display:flex;flex-direction:column;gap:20px">
+      <div class="col-stack">
         <div class="card">
           <div class="card-title">🚗 Road — รถที่สำรวจแยกตามจุด <span class="badge" id="badgeRoadsideStation"></span></div>
           <div class="chart-wrap"><canvas id="chartRoadByStation"></canvas></div>
@@ -357,7 +364,7 @@
         </div>
       </div>
       <!-- ขวา: Home -->
-      <div style="display:flex;flex-direction:column;gap:20px" id="cardHomeSupervisor">
+      <div class="col-stack" id="cardHomeSupervisor">
         <div class="card">
           <div class="card-title">🏠 Home — บ้านที่สำรวจแยกตามผู้ควบคุม <span class="badge" id="badgeHomeSurveyor"></span></div>
           <div class="chart-wrap"><canvas id="chartHomeBySupervisor"></canvas></div>

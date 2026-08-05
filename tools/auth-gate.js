@@ -24,13 +24,13 @@
     if (ov || !document.body) return;
     ov = document.createElement('div');
     ov.id = '_authgate';
-    ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0f172a;display:flex;' +
+    ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#1c1c1e;display:flex;' +
       'flex-direction:column;align-items:center;justify-content:center;gap:12px;' +
       'font-family:Sarabun,system-ui,sans-serif;padding:24px;';
     ov.innerHTML =
       '<div style="font-size:40px">🔒</div>' +
-      '<div style="color:#f1f5f9;font-size:18px;font-weight:700">เครื่องมือสำหรับผู้ดูแล</div>' +
-      '<div id="_agStatus" style="color:#94a3b8;font-size:13px">กำลังเชื่อมต่อ...</div>';
+      '<div style="color:#f5f5f7;font-size:18px;font-weight:700">เครื่องมือสำหรับผู้ดูแล</div>' +
+      '<div id="_agStatus" style="color:#98989d;font-size:13px">กำลังเชื่อมต่อ...</div>';
     document.body.appendChild(ov);
     statusEl = ov.querySelector('#_agStatus');
   }
@@ -40,14 +40,14 @@
     if (!ov) return;
     ov.innerHTML =
       '<div style="font-size:40px">🔒</div>' +
-      '<div style="color:#f1f5f9;font-size:18px;font-weight:700">เครื่องมือสำหรับผู้ดูแล</div>' +
-      '<div style="color:#94a3b8;font-size:13px">เข้าสู่ระบบด้วยบัญชี Admin</div>' +
+      '<div style="color:#f5f5f7;font-size:18px;font-weight:700">เครื่องมือสำหรับผู้ดูแล</div>' +
+      '<div style="color:#98989d;font-size:13px">เข้าสู่ระบบด้วยบัญชี Admin</div>' +
       '<input id="_agU" type="text" placeholder="ชื่อผู้ใช้" autocomplete="username" ' +
-        'style="padding:12px 16px;border-radius:10px;border:1px solid #334155;background:#1e293b;color:#f1f5f9;font-size:15px;width:240px;outline:none" />' +
+        'style="padding:12px 16px;border-radius:10px;border:1px solid #3a3a3c;background:#2c2c2e;color:#f5f5f7;font-size:15px;width:240px;outline:none" />' +
       '<input id="_agP" type="password" placeholder="รหัสผ่าน" autocomplete="current-password" ' +
-        'style="padding:12px 16px;border-radius:10px;border:1px solid #334155;background:#1e293b;color:#f1f5f9;font-size:15px;width:240px;outline:none" />' +
-      '<button id="_agB" style="padding:12px 28px;border:none;border-radius:10px;background:#2563eb;color:#fff;font-weight:600;font-size:15px;cursor:pointer;width:240px">เข้าสู่ระบบ</button>' +
-      '<div id="_agE" style="color:#f87171;font-size:13px;height:16px"></div>';
+        'style="padding:12px 16px;border-radius:10px;border:1px solid #3a3a3c;background:#2c2c2e;color:#f5f5f7;font-size:15px;width:240px;outline:none" />' +
+      '<button id="_agB" style="padding:12px 28px;border:none;border-radius:10px;background:#0a84ff;color:#fff;font-weight:600;font-size:15px;cursor:pointer;width:240px">เข้าสู่ระบบ</button>' +
+      '<div id="_agE" style="color:#ff8a80;font-size:13px;height:16px"></div>';
     var u = ov.querySelector('#_agU'), p = ov.querySelector('#_agP'),
         b = ov.querySelector('#_agB'), e = ov.querySelector('#_agE');
     function go() {
@@ -74,9 +74,9 @@
     if (!ov) return;
     ov.innerHTML =
       '<div style="font-size:40px">⛔</div>' +
-      '<div style="color:#f1f5f9;font-size:18px;font-weight:700">เครื่องมือนี้สำหรับผู้ดูแลเท่านั้น</div>' +
-      '<div style="color:#94a3b8;font-size:13px;text-align:center;max-width:320px;line-height:1.6">' + text + '</div>' +
-      '<button id="_agOut" style="padding:10px 24px;border:none;border-radius:10px;background:#334155;color:#cbd5e1;font-weight:600;font-size:14px;cursor:pointer">ออกจากระบบ</button>';
+      '<div style="color:#f5f5f7;font-size:18px;font-weight:700">เครื่องมือนี้สำหรับผู้ดูแลเท่านั้น</div>' +
+      '<div style="color:#98989d;font-size:13px;text-align:center;max-width:320px;line-height:1.6">' + text + '</div>' +
+      '<button id="_agOut" style="padding:10px 24px;border:none;border-radius:10px;background:#3a3a3c;color:#d1d1d6;font-weight:600;font-size:14px;cursor:pointer">ออกจากระบบ</button>';
     ov.querySelector('#_agOut').onclick = function () { auth.signOut(); };
   }
 

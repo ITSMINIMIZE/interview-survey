@@ -7,30 +7,30 @@
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />
 <style>
   *{box-sizing:border-box;margin:0;padding:0;font-family:'Sarabun',sans-serif}
-  body{background:linear-gradient(160deg,#fee2e2,#fef2f2,#f8fafc);min-height:100vh;padding:24px}
+  body{background:linear-gradient(160deg,#3a1512,#3a1512,#f5f5f7);min-height:100vh;padding:24px}
   .card{max-width:720px;margin:0 auto;background:#fff;border-radius:16px;padding:28px;box-shadow:0 8px 40px rgba(0,0,0,.08)}
-  h1{font-size:22px;color:#0f172a;margin-bottom:6px}
-  .sub{font-size:13px;color:#64748b;margin-bottom:20px}
-  .warn{background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:14px;margin-bottom:14px;font-size:13px;color:#78350f;line-height:1.7}
-  .warn b{color:#b45309}
-  .danger{background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:14px;margin-bottom:18px;font-size:13px;color:#7f1d1d;line-height:1.7}
-  code{background:#0f172a;color:#fbbf24;padding:1px 6px;border-radius:4px;font:12px ui-monospace,Menlo,monospace}
+  h1{font-size:22px;color:#1c1c1e;margin-bottom:6px}
+  .sub{font-size:13px;color:#8e8e93;margin-bottom:20px}
+  .warn{background:#3a2c0a;border:1px solid #ffd60a;border-radius:8px;padding:14px;margin-bottom:14px;font-size:13px;color:#ffd60a;line-height:1.7}
+  .warn b{color:#ff9f0a}
+  .danger{background:#3a1512;border:1px solid #ff8a80;border-radius:8px;padding:14px;margin-bottom:18px;font-size:13px;color:#4a1512;line-height:1.7}
+  code{background:#1c1c1e;color:#ffd60a;padding:1px 6px;border-radius:4px;font:12px ui-monospace,Menlo,monospace}
   .row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
   .btn{flex:1;min-width:200px;padding:14px;border:none;border-radius:10px;font:600 14px 'Sarabun';cursor:pointer;transition:all .15s}
-  .btn-del{background:#dc2626;color:#fff}
-  .btn-del:hover{background:#b91c1c;transform:translateY(-1px)}
-  .btn-del:disabled{background:#cbd5e1;cursor:not-allowed;transform:none}
-  .btn-warn{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;flex:0 0 auto;min-width:auto}
-  .progress{height:8px;background:#f1f5f9;border-radius:99px;overflow:hidden;margin-bottom:14px}
-  .progress-fill{height:100%;background:linear-gradient(90deg,#991b1b,#f87171);transition:width .25s ease;width:0}
-  .log{background:#0f172a;color:#94a3b8;font:12px ui-monospace,Menlo,monospace;padding:14px;border-radius:8px;height:340px;overflow-y:auto;line-height:1.55}
-  .log .ok{color:#34d399}
-  .log .info{color:#60a5fa}
-  .log .err{color:#f87171}
+  .btn-del{background:#ff453a;color:#fff}
+  .btn-del:hover{background:#ff8a80;transform:translateY(-1px)}
+  .btn-del:disabled{background:#d1d1d6;cursor:not-allowed;transform:none}
+  .btn-warn{background:#f5f5f7;color:#48484a;border:1px solid #e5e5ea;flex:0 0 auto;min-width:auto}
+  .progress{height:8px;background:#f5f5f7;border-radius:99px;overflow:hidden;margin-bottom:14px}
+  .progress-fill{height:100%;background:linear-gradient(90deg,#ff8a80,#ff8a80);transition:width .25s ease;width:0}
+  .log{background:#1c1c1e;color:#98989d;font:12px ui-monospace,Menlo,monospace;padding:14px;border-radius:8px;height:340px;overflow-y:auto;line-height:1.55}
+  .log .ok{color:#30d158}
+  .log .info{color:#409cff}
+  .log .err{color:#ff8a80}
   .stat{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
-  .stat>div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;text-align:center}
-  .stat strong{display:block;font-size:20px;color:#0f172a;line-height:1}
-  .stat span{font-size:10px;color:#64748b;margin-top:4px;display:block;letter-spacing:.04em}
+  .stat>div{background:#f5f5f7;border:1px solid #e5e5ea;border-radius:10px;padding:10px;text-align:center}
+  .stat strong{display:block;font-size:20px;color:#1c1c1e;line-height:1}
+  .stat span{font-size:10px;color:#8e8e93;margin-top:4px;display:block;letter-spacing:.04em}
 </style>
 <script src="project-service.js"></script>
 <script src="auth-gate.js"></script>
@@ -38,7 +38,7 @@
 </head>
 <body>
 <div class="card">
-  <a data-back href="../index.html" style="display:inline-block;margin-bottom:14px;color:#64748b;text-decoration:none;font-size:14px;font-weight:600;">← ย้อนกลับ</a>
+  <a data-back href="../index.html" style="display:inline-block;margin-bottom:14px;color:#8e8e93;text-decoration:none;font-size:14px;font-weight:600;">← ย้อนกลับ</a>
   <h1>🧹 Cleanup SEED Data</h1>
   <div class="sub">ลบเฉพาะ document ที่ ID มีคำว่า <code>SEED</code> ออกจาก Firestore (ข้อมูลจริงไม่ถูกแตะ)</div>
 

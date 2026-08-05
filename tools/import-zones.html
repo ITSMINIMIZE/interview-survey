@@ -7,27 +7,27 @@
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />
 <style>
   *{box-sizing:border-box;margin:0;padding:0;font-family:'Sarabun',sans-serif}
-  body{background:#0f172a;min-height:100vh;padding:24px;color:#e2e8f0}
+  body{background:#1c1c1e;min-height:100vh;padding:24px;color:#e5e5ea}
   .wrap{max-width:760px;margin:0 auto}
-  h1{font-size:22px;color:#f1f5f9;margin-bottom:4px}
-  .sub{color:#64748b;font-size:13px;margin-bottom:20px}
-  a.back{display:inline-block;margin-bottom:16px;padding:7px 14px;background:#1e293b;border:1px solid #334155;border-radius:10px;color:#94a3b8;text-decoration:none;font-size:13px;font-weight:600}
-  .card{background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;margin-bottom:16px}
-  .card h2{font-size:15px;color:#f1f5f9;margin-bottom:12px}
-  .req{display:inline-block;background:#0f172a;border:1px solid #475569;border-radius:8px;padding:3px 10px;margin:0 6px 6px 0;font-size:13px;font-family:monospace;color:#93c5fd}
-  #drop{border:2px dashed #475569;border-radius:12px;padding:34px;text-align:center;color:#94a3b8;cursor:pointer;transition:all .15s}
-  #drop:hover,#drop.over{border-color:#3b82f6;background:rgba(59,130,246,.06);color:#cbd5e1}
+  h1{font-size:22px;color:#f5f5f7;margin-bottom:4px}
+  .sub{color:#8e8e93;font-size:13px;margin-bottom:20px}
+  a.back{display:inline-block;margin-bottom:16px;padding:7px 14px;background:#2c2c2e;border:1px solid #3a3a3c;border-radius:10px;color:#98989d;text-decoration:none;font-size:13px;font-weight:600}
+  .card{background:#2c2c2e;border:1px solid #3a3a3c;border-radius:14px;padding:20px;margin-bottom:16px}
+  .card h2{font-size:15px;color:#f5f5f7;margin-bottom:12px}
+  .req{display:inline-block;background:#1c1c1e;border:1px solid #48484a;border-radius:8px;padding:3px 10px;margin:0 6px 6px 0;font-size:13px;font-family:monospace;color:#64b5ff}
+  #drop{border:2px dashed #48484a;border-radius:12px;padding:34px;text-align:center;color:#98989d;cursor:pointer;transition:all .15s}
+  #drop:hover,#drop.over{border-color:#0a84ff;background:rgba(10,132,255,.06);color:#d1d1d6}
   #drop input{display:none}
   .btn{padding:10px 18px;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
-  .btn-primary{background:#3b82f6;color:#fff}
-  .btn-primary:disabled{background:#334155;color:#64748b;cursor:not-allowed}
-  .row{border-bottom:1px solid #33415580;padding:7px 0;font-size:13px;display:flex;justify-content:space-between;gap:12px}
+  .btn-primary{background:#0a84ff;color:#fff}
+  .btn-primary:disabled{background:#3a3a3c;color:#8e8e93;cursor:not-allowed}
+  .row{border-bottom:1px solid #3a3a3c80;padding:7px 0;font-size:13px;display:flex;justify-content:space-between;gap:12px}
   .row:last-child{border:none}
-  .ok{color:#6ee7b7}.err{color:#fca5a5}.warn{color:#fcd34d}.muted{color:#64748b}
-  code{font-family:monospace;background:#0f172a;padding:1px 6px;border-radius:5px;font-size:12px}
+  .ok{color:#63e6a0}.err{color:#ff8a80}.warn{color:#ffd60a}.muted{color:#8e8e93}
+  code{font-family:monospace;background:#1c1c1e;padding:1px 6px;border-radius:5px;font-size:12px}
   .rep{max-height:280px;overflow:auto}
   table{width:100%;border-collapse:collapse;font-size:12px}
-  td{padding:5px 8px;border-bottom:1px solid #33415560}
+  td{padding:5px 8px;border-bottom:1px solid #3a3a3c60}
 </style>
 <script src="vendor/shp.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -55,7 +55,7 @@
   <div class="card">
     <div id="drop">
       <div style="font-size:34px">📂</div>
-      <div style="margin-top:8px">ลากไฟล์มาวาง หรือ <b style="color:#93c5fd">คลิกเลือก</b></div>
+      <div style="margin-top:8px">ลากไฟล์มาวาง หรือ <b style="color:#64b5ff">คลิกเลือก</b></div>
       <div class="muted" style="font-size:12px;margin-top:4px">.zip (shapefile) / .geojson / .json</div>
       <input type="file" id="file" accept=".zip,.geojson,.json" />
     </div>
@@ -67,7 +67,7 @@
     <div id="report"></div>
     <div style="margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-primary" id="upBtn" disabled onclick="uploadZones()">☁️ อัปโหลดเข้าระบบ (Dashboard ใช้ทันที)</button>
-      <button class="btn" id="dlBtn" disabled onclick="downloadZones()" style="background:#334155;color:#cbd5e1">⬇ ดาวน์โหลด zones.js</button>
+      <button class="btn" id="dlBtn" disabled onclick="downloadZones()" style="background:#3a3a3c;color:#d1d1d6">⬇ ดาวน์โหลด zones.js</button>
       <span id="dlNote" class="muted" style="font-size:12px"></span>
     </div>
     <div id="upStatus" style="margin-top:10px;font-size:13px"></div>

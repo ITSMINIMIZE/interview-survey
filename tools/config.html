@@ -7,29 +7,29 @@
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />
 <style>
   *{box-sizing:border-box;margin:0;padding:0;font-family:'Sarabun',sans-serif}
-  body{background:linear-gradient(160deg,#0f172a,#1e293b);min-height:100vh;padding:24px;color:#e2e8f0}
-  .card{max-width:620px;margin:0 auto;background:#1e293b;border:1px solid #334155;border-radius:16px;padding:26px;box-shadow:0 8px 40px rgba(0,0,0,.3)}
-  h1{font-size:20px;color:#f1f5f9;margin-bottom:4px}
-  .sub{font-size:13px;color:#94a3b8;margin-bottom:20px;line-height:1.6}
+  body{background:linear-gradient(160deg,#1c1c1e,#2c2c2e);min-height:100vh;padding:24px;color:#e5e5ea}
+  .card{max-width:620px;margin:0 auto;background:#2c2c2e;border:1px solid #3a3a3c;border-radius:16px;padding:26px;box-shadow:0 8px 40px rgba(0,0,0,.3)}
+  h1{font-size:20px;color:#f5f5f7;margin-bottom:4px}
+  .sub{font-size:13px;color:#98989d;margin-bottom:20px;line-height:1.6}
   .field{margin-bottom:16px}
-  .field label{display:block;font-size:12px;font-weight:600;color:#cbd5e1;margin-bottom:6px}
-  input{width:100%;padding:11px 13px;border:1.5px solid #334155;border-radius:9px;background:#0f172a;color:#f1f5f9;font:14px 'Sarabun';outline:none}
-  input:focus{border-color:#2563eb}
-  .hint{font-size:11px;color:#64748b;margin-top:4px}
+  .field label{display:block;font-size:12px;font-weight:600;color:#d1d1d6;margin-bottom:6px}
+  input{width:100%;padding:11px 13px;border:1.5px solid #3a3a3c;border-radius:9px;background:#1c1c1e;color:#f5f5f7;font:14px 'Sarabun';outline:none}
+  input:focus{border-color:#0a84ff}
+  .hint{font-size:11px;color:#8e8e93;margin-top:4px}
   .btn{padding:11px 18px;border:none;border-radius:9px;font:600 14px 'Sarabun';cursor:pointer;transition:all .15s}
-  .btn-go{background:#2563eb;color:#fff}.btn-go:hover{background:#1d4ed8}
-  .btn-go:disabled{background:#475569;cursor:not-allowed}
-  .btn-ghost{background:#334155;color:#cbd5e1}
+  .btn-go{background:#0a84ff;color:#fff}.btn-go:hover{background:#0071e3}
+  .btn-go:disabled{background:#48484a;cursor:not-allowed}
+  .btn-ghost{background:#3a3a3c;color:#d1d1d6}
   .row{display:flex;gap:10px;align-items:flex-end}
   .row .field{flex:1;margin-bottom:0}
-  .box{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:14px;margin-bottom:18px;font-size:13px;line-height:1.7}
-  .box b{color:#f1f5f9}
-  .who{font-size:12px;color:#34d399}
+  .box{background:#1c1c1e;border:1px solid #3a3a3c;border-radius:10px;padding:14px;margin-bottom:18px;font-size:13px;line-height:1.7}
+  .box b{color:#f5f5f7}
+  .who{font-size:12px;color:#30d158}
   .msg{font-size:13px;min-height:18px;margin-top:10px}
-  .msg.ok{color:#34d399}.msg.err{color:#f87171}.msg.info{color:#60a5fa}
-  .divider{height:1px;background:#334155;margin:20px 0}
+  .msg.ok{color:#30d158}.msg.err{color:#ff8a80}.msg.info{color:#409cff}
+  .divider{height:1px;background:#3a3a3c;margin:20px 0}
   .locked{opacity:.5;pointer-events:none}
-  code{background:#0f172a;padding:1px 6px;border-radius:5px;color:#fbbf24;font-size:12px}
+  code{background:#1c1c1e;padding:1px 6px;border-radius:5px;color:#ffd60a;font-size:12px}
 </style>
 <script src="project-service.js"></script>
 <script src="auth-gate.js"></script>
@@ -37,7 +37,7 @@
 </head>
 <body>
 <div class="card">
-  <a data-back href="../index.html" style="display:inline-block;margin-bottom:14px;color:#94a3b8;text-decoration:none;font-size:14px;font-weight:600;">← ย้อนกลับ</a>
+  <a data-back href="../index.html" style="display:inline-block;margin-bottom:14px;color:#98989d;text-decoration:none;font-size:14px;font-weight:600;">← ย้อนกลับ</a>
   <h1>🔑 App Config — API Keys</h1>
   <div class="sub">จัดการ API key ที่ใช้ทั้ง Roadside + Home (เก็บใน Firestore <code>config/app</code>) — แก้ที่นี่ที่เดียว ทุกเครื่องได้ค่าใหม่โดยไม่ต้องแก้โค้ด</div>
 
@@ -72,7 +72,7 @@
     <div class="msg" id="saveMsg"></div>
   </div>
 
-  <div class="box" style="margin-top:18px;color:#94a3b8;">
+  <div class="box" style="margin-top:18px;color:#98989d;">
     หมายเหตุ: key ใหม่จะมีผล<b>ครั้งถัดไปที่ surveyor เปิดแผนที่</b> (เกือบทันที เมื่อมีเน็ต) · ออฟไลน์ใช้ค่าที่แคชล่าสุด · ปล่อยช่องว่าง = ใช้ key ที่ฝังในโค้ด (fallback)
   </div>
 </div>
@@ -154,13 +154,13 @@ auth.onAuthStateChanged(user => {
   if (user){
     const name = user.email.replace(EMAIL_DOMAIN,'');
     keyBox.classList.remove('locked');
-    who.style.color = '#34d399';
-    who.innerHTML = `🔓 login เป็น <b>${name}</b> — แก้ key ได้ · <a href="#" onclick="auth.signOut();return false" style="color:#60a5fa">ออกจากระบบ</a>`;
+    who.style.color = '#30d158';
+    who.innerHTML = `🔓 login เป็น <b>${name}</b> — แก้ key ได้ · <a href="#" onclick="auth.signOut();return false" style="color:#409cff">ออกจากระบบ</a>`;
     $('saveBtn').disabled = false;
     loginBox.style.display = 'none';
   } else {
     keyBox.classList.add('locked');
-    who.style.color = '#fbbf24';
+    who.style.color = '#ffd60a';
     who.textContent = '⚠ ยังไม่ได้ login — ดูได้อย่างเดียว';
     $('saveBtn').disabled = true;
     loginBox.style.display = '';
