@@ -35,6 +35,7 @@
   .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700}
   .pill-admin{background:rgba(239,68,68,.16);color:#fca5a5}
   .pill-staff{background:rgba(59,130,246,.16);color:#93c5fd}
+  .pill-user{background:rgba(59,130,246,.16);color:#93c5fd}
   .pill-off{background:#334155;color:#94a3b8}
   .box{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:14px;font-size:13px;line-height:1.7;color:#94a3b8}
   .box b{color:#f1f5f9}
@@ -60,7 +61,7 @@
   <div class="card">
     <h1>👥 จัดการบัญชีผู้ใช้</h1>
     <div class="sub">
-      สร้างและจัดการบัญชี <b>admin</b> (ผู้ดูแลระบบ — ทำได้ทุกอย่าง) และ <b>staff</b> (ผู้ควบคุม — สร้างจุดสำรวจ + ดู Dashboard เฉพาะทีมตัวเอง)<br>
+      สร้างและจัดการบัญชี <b>admin</b> (ผู้ดูแลระบบ — เห็นและจัดการได้ทุกโครงการ) และ <b>user</b> (ผู้ใช้ทั่วไป)<br>บัญชี user จะเห็นเฉพาะโครงการที่ถูกแต่งตั้งเป็น<b>ผู้ควบคุม</b> — แต่งตั้งที่ <a href="projects.html" style="color:#60a5fa">จัดการโครงการ → 👔 ผู้ควบคุม</a><br>
       ผู้สำรวจไม่ต้องมีบัญชี ใช้วิธีพิมพ์ชื่อเหมือนเดิม
     </div>
     <div id="meBox" class="box">กำลังโหลด...</div>
@@ -75,7 +76,7 @@
       <div class="field">
         <label>ระดับบัญชี</label>
         <select id="c_role" onchange="onRoleChange()">
-          <option value="staff">staff — ผู้ควบคุม</option>
+          <option value="user">user — ผู้ใช้ทั่วไป (แต่งตั้งเป็นผู้ควบคุมรายโครงการ)</option>
           <option value="admin">admin — ผู้ดูแลระบบ</option>
         </select>
       </div>
@@ -121,7 +122,7 @@
       <h2 style="margin:0">📋 บัญชีทั้งหมด <span id="cnt" style="color:#64748b;font-weight:400"></span></h2>
       <div style="display:flex;gap:8px">
         <button class="btn btn-ghost btn-sm" onclick="loadUsers()">↻ โหลดใหม่</button>
-        <button class="btn btn-ghost btn-sm" onclick="rebuildSupervisors()">🔄 อัปเดตรายชื่อผู้ควบคุมในแอป</button>
+        <a class="btn btn-ghost btn-sm" href="projects.html" style="text-decoration:none">👔 แต่งตั้งผู้ควบคุมรายโครงการ</a>
       </div>
     </div>
     <div style="overflow-x:auto"><table id="tbl"><tbody><tr><td>กำลังโหลด...</td></tr></tbody></table></div>
@@ -140,7 +141,7 @@
       <div class="grid2">
         <div class="field">
           <label>ระดับบัญชี</label>
-          <select id="e_role"><option value="staff">staff — ผู้ควบคุม</option><option value="admin">admin — ผู้ดูแลระบบ</option></select>
+          <select id="e_role"><option value="user">user — ผู้ใช้ทั่วไป (แต่งตั้งเป็นผู้ควบคุมรายโครงการ)</option><option value="admin">admin — ผู้ดูแลระบบ</option></select>
         </div>
         <div class="field">
           <label>สถานะ</label>
@@ -171,7 +172,7 @@
     </div>
     <div class="grid2">
       <div class="field"><label>ชื่อ-นามสกุล</label><input id="f_name" type="text" /></div>
-      <div class="field"><label>ระดับ</label><select id="f_role"><option value="staff">staff</option><option value="admin">admin</option></select></div>
+      <div class="field"><label>ระดับ</label><select id="f_role"><option value="user">user</option><option value="admin">admin</option></select></div>
     </div>
     <button class="btn btn-warn" onclick="doRepair()">🔧 สร้าง/เขียนทับ users doc</button>
     <div class="msg" id="repairMsg"></div>
@@ -276,8 +277,8 @@ async function doCreate(){
   if (pw.length < 8)        return msg($('createMsg'), 'รหัสผ่านต้องยาวอย่างน้อย 8 ตัว', 'err');
   if (pw !== pw2)           return msg($('createMsg'), 'รหัสผ่านสองช่องไม่ตรงกัน', 'err');
   const email = raw.includes('@') ? raw : raw + EMAIL_DOMAIN;
-  if (role === 'staff' && email.endsWith(EMAIL_DOMAIN))
-    return msg($('createMsg'), 'บัญชี staff ต้องใช้อีเมลจริง (เช่น @gmail.com) เพื่อให้กู้รหัสผ่านเองได้', 'err');
+  if (role === 'user' && email.endsWith(EMAIL_DOMAIN))
+    return msg($('createMsg'), 'บัญชี user ต้องใช้อีเมลจริง (เช่น @gmail.com) เพื่อให้กู้รหัสผ่านเองได้', 'err');
 
   $('createBtn').disabled = true;
   msg($('createMsg'), 'กำลังตรวจสอบ...', 'info');
@@ -317,7 +318,7 @@ async function loadUsers(){
     const snap = await db.collection('users').get();
     USERS = snap.docs.map(d => d.data());
     USERS.sort((a,b) => (a.role === b.role ? String(a.displayName||'').localeCompare(String(b.displayName||'')) : (a.role === 'admin' ? -1 : 1)));
-    $('cnt').textContent = `(${USERS.length} บัญชี · admin ${USERS.filter(u=>u.role==='admin'&&!u.disabled).length} · staff ${USERS.filter(u=>u.role==='staff'&&!u.disabled).length})`;
+    $('cnt').textContent = `(${USERS.length} บัญชี · admin ${USERS.filter(u=>u.role==='admin'&&!u.disabled).length} · user ${USERS.filter(u=>u.role!=='admin'&&!u.disabled).length})`;
     $('tbl').innerHTML = USERS.length === 0
       ? '<tbody><tr><td style="color:#64748b">ยังไม่มีบัญชีในระบบ — สร้างบัญชี admin ของคุณเองก่อน (ดูกล่องด้านบน)</td></tr></tbody>'
       : `<thead><tr><th>ชื่อ / ผู้ควบคุม</th><th>อีเมล</th><th>ระดับ</th><th>สถานะ</th><th></th></tr></thead>
@@ -420,21 +421,11 @@ async function deleteUser(uid){
   }
 }
 
-// ===== rebuild config/supervisors — รายชื่อที่แอปเอาไปทำ dropdown =====
-// เก็บแยกจาก users เพื่อไม่ให้ผู้สำรวจ (anonymous) อ่านอีเมล/username ได้
-async function rebuildSupervisors(){
-  try {
-    const list = USERS.filter(u => !u.disabled && u.supervisorName)
-      .map(u => ({ key: u.supervisorName, name: u.displayName || u.supervisorName }))
-      .filter((v,i,a) => a.findIndex(x => x.key === v.key) === i)
-      .sort((a,b) => a.name.localeCompare(b.name,'th'));
-    await Project.cfg(db,'supervisors').set({
-      list, updatedAt: new Date().toISOString(),
-      updatedBy: auth.currentUser ? auth.currentUser.email.replace(EMAIL_DOMAIN,'') : ''
-    });
-    msg($('listMsg'), `✓ อัปเดตรายชื่อผู้ควบคุมในแอปแล้ว (${list.length} คน)`, 'ok');
-  } catch(e){ msg($('listMsg'), 'อัปเดตรายชื่อไม่สำเร็จ: ' + esc(e.message), 'err'); }
-}
+// ===== รายชื่อผู้ควบคุม ย้ายไปผูกกับโครงการแล้ว =====
+// projects/{pid}/config/supervisors ถูกสร้างจาก projects/{pid}/members
+// โดย tools/projects.html — หน้านี้จัดการแค่ "บัญชีระดับระบบ"
+// (คนคนเดียวเป็นผู้ควบคุมคนละชื่อในคนละโครงการได้)
+async function rebuildSupervisors(){ /* no-op — ดู tools/projects.html */ }
 
 // ===== เปลี่ยนอีเมลที่ใช้ login ของบัญชีตัวเอง =====
 // Firebase บล็อก updateEmail ตรงๆ (email enumeration protection) → ต้องส่งลิงก์ยืนยันไปอีเมลใหม่

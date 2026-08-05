@@ -144,16 +144,32 @@ function fbInit() {
   auth = firebase.auth();
 }
 
-// อ่านสิทธิ์จาก users/{uid} — null = ไม่มีสิทธิ์/ถูกปิด
+// อ่านสิทธิ์ 2 ชั้น (เหมือน js/auth-role.js) — null = ไม่มีสิทธิ์ในโครงการนี้/ถูกปิด
+//   users/{uid}.role = 'admin' → เห็นทุกโครงการ
+//   users/{uid}.role = 'user'  → ต้องถูกแต่งตั้งใน projects/{pid}/members/{uid} จึงเป็น staff
 async function resolveRole(user) {
   try {
     const snap = await db.collection('users').doc(user.uid).get();
     if (!snap.exists) return null;
     const d = snap.data();
     if (d.disabled === true) return null;
-    if (d.role !== 'admin' && d.role !== 'staff') return null;
-    return { uid: user.uid, email: user.email || '', username: d.username || '',
-             role: d.role, supervisorName: d.supervisorName || '', displayName: d.displayName || d.username || '' };
+
+    // 'staff' ที่ค้างจากโครงสร้างเดิม = 'user'
+    const globalRole = (d.role === 'staff') ? 'user' : (d.role || '');
+    const base = { uid: user.uid, email: user.email || '', username: d.username || '',
+                   globalRole, displayName: d.displayName || d.username || '' };
+
+    if (globalRole === 'admin')
+      return { ...base, role: 'admin', supervisorName: d.supervisorName || '' };
+
+    if (globalRole !== 'user' || !Project.id()) return null;
+
+    const m = await Project.col(db, 'members').doc(user.uid).get();
+    if (!m.exists) return null;                     // ไม่ได้อยู่ในโครงการนี้
+    const md = m.data();
+    return { ...base, role: 'staff',
+             supervisorName: md.supervisorName || base.displayName || base.username,
+             displayName: md.displayName || base.displayName };
   } catch (e) { return null; }
 }
 const isStaff = () => !!ME && ME.role === 'staff';

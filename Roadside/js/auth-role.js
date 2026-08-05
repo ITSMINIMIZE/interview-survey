@@ -1,17 +1,30 @@
-// ===== ROLE — อ่านสิทธิ์ของบัญชีจาก users/{uid} =====
-// ระดับ: admin (ทำได้ทุกอย่าง) · staff (ผู้ควบคุม — เห็น/แก้เฉพาะทีมตัวเอง) · null (ผู้สำรวจ/ไม่มีสิทธิ์)
+// ===== ROLE — สิทธิ์ 2 ชั้น: ระดับระบบ + ระดับโครงการ =====
+//
+//   users/{uid}.role          ระดับระบบ: 'admin' (ทั้งระบบ) | 'user' (ทั่วไป)
+//   projects/{pid}/members/{uid}   แต่งตั้งเป็น staff (ผู้ควบคุม) ในโครงการนั้น
+//
+// สิทธิ์ที่ "ใช้จริง" ในโครงการที่เปิดอยู่ (role) คำนวณจาก 2 อันข้างบน:
+//   admin ระดับระบบ            → role 'admin'  (ทุกโครงการ)
+//   user + เป็น member         → role 'staff'  (เฉพาะโครงการนั้น)
+//   user + ไม่ได้เป็น member   → null          (เข้าโครงการนี้ไม่ได้)
+//
+// ทำแบบนี้เพื่อให้โค้ดแอปเดิมที่เช็ค role === 'admin' / 'staff' ใช้ต่อได้ทั้งหมด
+// โดยไม่ต้องแก้ app.js (2,200 บรรทัด × 2 แอป)
 //
 // ⚠️ cache เป็นแค่เรื่องความเร็ว (UX) ไม่ใช่ความปลอดภัย —
-//    สิทธิ์จริงบังคับที่ Firestore rules ซึ่งอ่าน users/{uid} สดทุกครั้งที่เขียนของสำคัญ
+//    สิทธิ์จริงบังคับที่ Firestore rules
 //
 // หมายเหตุ: ไฟล์นี้ถูก copy ไว้ทั้ง Home/js/ และ Roadside/js/ ให้เหมือนกัน
 // (ต้องอยู่ใน scope ของ service worker แต่ละแอป ไม่งั้นใช้งาน offline ไม่ได้)
 const Role = {
   CACHE_KEY: '_is_role_cache_v1',
   TTL_MS: 6 * 60 * 60 * 1000,   // 6 ชม. — เปลี่ยน role แล้วมีผลภายในกะงาน
-  current: null,                // { uid, email, username, role, supervisorName, displayName }
+  current: null,                // { uid, email, username, role, globalRole, supervisorName, displayName }
 
-  // คืน object สิทธิ์ หรือ null ถ้าไม่ใช่บัญชีจริง / ไม่มีสิทธิ์ / ถูกปิด
+  // สิทธิ์ผูกกับโครงการ → cache ต้องแยกตามโครงการด้วย
+  _k() { return this.CACHE_KEY + '__' + (Project.id() || 'none'); },
+
+  // คืน object สิทธิ์ หรือ null ถ้าไม่ใช่บัญชีจริง / ไม่มีสิทธิ์ในโครงการนี้ / ถูกปิด
   // fresh = true → ข้าม cache (ใช้ตอนเพิ่ง login เพื่อให้เห็นสิทธิ์ล่าสุดทันที)
   async resolve(user, db, fresh) {
     if (!user || user.isAnonymous) { this.current = null; return null; }
@@ -20,6 +33,7 @@ const Role = {
       const c = this._cached(user.uid);
       if (c) { this.current = c; return c; }
     }
+
     let snap;
     try {
       snap = await db.collection('users').doc(user.uid).get();
@@ -33,23 +47,59 @@ const Role = {
     const d = snap.data();
     if (d.disabled === true) { this.clear(); return null; }  // ถูกปิดบัญชี
 
-    this.current = {
-      uid:            user.uid,
-      email:          user.email || '',
-      username:       d.username || (user.email || '').split('@')[0],
-      role:           d.role || '',
-      supervisorName: d.supervisorName || '',
-      displayName:    d.displayName || d.username || ''
+    // 'staff' ที่ค้างจากโครงสร้างเดิม = 'user' ในโครงสร้างใหม่
+    const globalRole = (d.role === 'staff') ? 'user' : (d.role || '');
+
+    const base = {
+      uid:         user.uid,
+      email:       user.email || '',
+      username:    d.username || (user.email || '').split('@')[0],
+      globalRole,
+      displayName: d.displayName || d.username || ''
     };
+
+    // ---- admin ระดับระบบ: ผ่านทุกโครงการ ----
+    if (globalRole === 'admin') {
+      this.current = { ...base, role: 'admin', supervisorName: d.supervisorName || '' };
+      this._cache();
+      return this.current;
+    }
+
+    // ---- user ทั่วไป: ต้องถูกแต่งตั้งใน "โครงการที่เปิดอยู่" ----
+    if (globalRole !== 'user') { this.clear(); return null; }
+    if (!Project.id()) { this.clear(); return null; }   // ยังไม่ได้เลือกโครงการ
+
+    let m;
     try {
-      localStorage.setItem(this.CACHE_KEY, JSON.stringify({ ...this.current, at: Date.now() }));
-    } catch (_) { /* โควตาเต็ม — ไม่เป็นไร แค่ต้องอ่านใหม่รอบหน้า */ }
+      m = await Project.col(db, 'members').doc(user.uid).get();
+    } catch (e) {
+      const stale = this._cached(user.uid, true);
+      this.current = stale || null;
+      return this.current;
+    }
+    if (!m.exists) { this.clear(); return null; }       // ไม่ได้อยู่ในโครงการนี้
+
+    const md = m.data();
+    this.current = {
+      ...base,
+      role:           'staff',
+      // ชื่อผู้ควบคุมใช้จับคู่ข้อมูลกับทีม — ต่างโครงการตั้งชื่อต่างกันได้
+      supervisorName: md.supervisorName || base.displayName || base.username,
+      displayName:    md.displayName || base.displayName
+    };
+    this._cache();
     return this.current;
+  },
+
+  _cache() {
+    try {
+      localStorage.setItem(this._k(), JSON.stringify({ ...this.current, at: Date.now() }));
+    } catch (_) { /* โควตาเต็ม — ไม่เป็นไร แค่ต้องอ่านใหม่รอบหน้า */ }
   },
 
   clear() {
     this.current = null;
-    try { localStorage.removeItem(this.CACHE_KEY); } catch (_) {}
+    try { localStorage.removeItem(this._k()); } catch (_) {}
   },
 
   isAdmin() { return !!this.current && this.current.role === 'admin'; },
@@ -57,7 +107,7 @@ const Role = {
 
   _cached(uid, ignoreExpiry) {
     try {
-      const raw = localStorage.getItem(this.CACHE_KEY);
+      const raw = localStorage.getItem(this._k());
       if (!raw) return null;
       const c = JSON.parse(raw);
       if (c.uid !== uid) return null;
