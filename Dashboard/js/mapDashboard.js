@@ -300,7 +300,7 @@ const MapDashboard = {
     if (count === 0) return { fill: 'rgba(152,152,157,0.15)', line: 'rgba(152,152,157,0.7)' };
     if (count < 5)  return { fill: 'rgba(10,132,255,0.15)',  line: 'rgba(10,132,255,0.8)' };
     if (count < 15) return { fill: 'rgba(10,132,255,0.25)',  line: 'rgba(10,132,255,0.9)' };
-    return              { fill: 'rgba(10,132,255,0.35)',       line: 'rgba(30,64,175,1)' };
+    return              { fill: 'rgba(10,132,255,0.35)',       line: 'rgba(0,113,227,1)' };
   },
 
   _drawZones(zoneCounts) {
