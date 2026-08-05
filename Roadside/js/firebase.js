@@ -56,6 +56,11 @@ const FB = {
     return this.auth.onAuthStateChanged(cb);
   },
 
+  // ===== ขอบเขตโครงการ =====
+  // ข้อมูลสำรวจทั้งหมดอยู่ใต้ projects/{pid} — ทุก read/write ต้องผ่าน _col()
+  // โยน error ถ้ายังไม่ได้เลือกโครงการ (ดีกว่าเขียนหลงไปที่อื่นเงียบๆ)
+  _col() { return Project.col(this.db, this.COLLECTION); },
+
   deviceId() {
     let id = localStorage.getItem('_is_device_id');
     if (!id) { id = 'DEV-' + Date.now(); localStorage.setItem('_is_device_id', id); }
@@ -100,8 +105,8 @@ const FB = {
     return typeof DataRound !== 'undefined' && DataRound.since() && DataRound.isOld(rec);
   },
 
-  pushStation(st)         { if (st) this._pushDoc(this.db.collection(this.COLLECTION).doc(st.id), this._stData(st)); },
-  pushInterview(stId, iv) { if (iv) this._pushDoc(this.db.collection(this.COLLECTION).doc(stId).collection('interviews').doc(iv.id), iv); },
+  pushStation(st)         { if (st) this._pushDoc(this._col().doc(st.id), this._stData(st)); },
+  pushInterview(stId, iv) { if (iv) this._pushDoc(this._col().doc(stId).collection('interviews').doc(iv.id), iv); },
 
   // ===== SYNC =====
   // admin: sync ทุก station + interview ที่อยู่ใน local
@@ -129,7 +134,7 @@ const FB = {
     let liveStationIds = null;
     if (!isAdmin && !isStaff) {
       try {
-        const snap = await this._withTimeout(this.db.collection(this.COLLECTION).get({ source: 'server' }));
+        const snap = await this._withTimeout(this._col().get({ source: 'server' }));
         liveStationIds = new Set(snap.docs.map(d => d.id));
       } catch (_) { liveStationIds = null; }   // เช็คไม่ได้ → ไม่บล็อก (ดีกว่าหยุดงานหน้างาน)
     }
@@ -149,7 +154,7 @@ const FB = {
     };
 
     for (const st of sts) {
-      const stRef = this.db.collection(this.COLLECTION).doc(st.id);
+      const stRef = this._col().doc(st.id);
 
       // จุดสำรวจถูกลบออกจากระบบแล้ว → ข้ามทั้งจุด (กันเขียนเป็นข้อมูลผี)
       if (liveStationIds && !liveStationIds.has(st.id)) {
@@ -197,7 +202,7 @@ const FB = {
     if (!this.db) throw new Error('Firebase ไม่พร้อม');
     // 1) ดึง stations
     const stSnap = await this._withTimeout(
-      this.db.collection(this.COLLECTION).get({ source: 'server' })
+      this._col().get({ source: 'server' })
     );
     if (stSnap.empty) throw new Error('ไม่มีข้อมูลใน Firestore');
 
@@ -234,7 +239,7 @@ const FB = {
   async pullBySupervisor(supervisorName) {
     if (!this.db) throw new Error('Firebase ไม่พร้อม');
     const stSnap = await this._withTimeout(
-      this.db.collection(this.COLLECTION)
+      this._col()
         .where('supervisorName', '==', supervisorName)
         .get({ source: 'server' })
     );
@@ -280,7 +285,7 @@ const FB = {
     if (!this.db) throw new Error('Firebase ไม่พร้อม');
 
     const stSnap = await this._withTimeout(
-      this.db.collection(this.COLLECTION).get({ source: 'server' })
+      this._col().get({ source: 'server' })
     );
     if (stSnap.empty) throw new Error('ไม่มีข้อมูลใน Firestore');
 

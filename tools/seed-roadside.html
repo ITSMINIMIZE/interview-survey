@@ -29,6 +29,7 @@
   .stat strong{display:block;font-size:22px;color:#0f172a;line-height:1}
   .stat span{font-size:11px;color:#64748b;margin-top:4px;display:block;letter-spacing:.04em}
 </style>
+<script src="project-service.js"></script>
 <script src="auth-gate.js"></script>
 </head>
 <body>
@@ -182,7 +183,7 @@ async function run() {
       surveyorName: 'admin', supervisorName: 'admin',
       createdAt: new Date().toISOString()
     };
-    await db.collection('roadside_stations').doc(st.id).set(stData, { merge: true });
+    await Project.col(db,'roadside_stations').doc(st.id).set(stData, { merge: true });
     stations++; writes++;
     cStations.textContent = stations;
     cWrites.textContent = writes;
@@ -199,7 +200,7 @@ async function run() {
         const hr = 7 + Math.floor(total / 60);
         const min = total % 60;
         const iv = makeInterview(st.id, st, sv, seq++, hr, min);
-        const ref = db.collection('roadside_stations').doc(st.id).collection('interviews').doc(iv.id);
+        const ref = Project.col(db,'roadside_stations').doc(st.id).collection('interviews').doc(iv.id);
         batch.set(ref, iv, { merge: true });
         ops++;
         if (ops >= CHUNK) { await batch.commit(); batch = db.batch(); ops = 0; }
@@ -211,7 +212,7 @@ async function run() {
         const hr = 15 + Math.floor(total / 60);
         const min = total % 60;
         const iv = makeInterview(st.id, st, sv, seq++, hr, min);
-        const ref = db.collection('roadside_stations').doc(st.id).collection('interviews').doc(iv.id);
+        const ref = Project.col(db,'roadside_stations').doc(st.id).collection('interviews').doc(iv.id);
         batch.set(ref, iv, { merge: true });
         ops++;
         if (ops >= CHUNK) { await batch.commit(); batch = db.batch(); ops = 0; }

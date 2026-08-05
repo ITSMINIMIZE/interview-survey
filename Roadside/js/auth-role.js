@@ -74,27 +74,34 @@ const Role = {
 const Supervisors = {
   CACHE_KEY: '_is_supervisors_v1',
   _list: null,
+  _pid: null,     // โครงการที่ _list ถืออยู่ — สลับโครงการแล้วต้องอ่านใหม่
+
+  // cache แยกตามโครงการ ไม่งั้นรายชื่อผู้ควบคุมข้ามโครงการกัน
+  _k() { return this.CACHE_KEY + '__' + (Project.id() || 'none'); },
 
   // อ่านแบบ sync สำหรับตอน render ฟอร์ม (คืน [] ถ้ายังไม่เคยโหลด)
   list() {
-    if (this._list) return this._list;
+    const pid = Project.id() || 'none';
+    if (this._list && this._pid === pid) return this._list;
     try {
-      const raw = localStorage.getItem(this.CACHE_KEY);
+      const raw = localStorage.getItem(this._k());
       this._list = raw ? JSON.parse(raw) : [];
     } catch (_) { this._list = []; }
+    this._pid = pid;
     return this._list;
   },
 
   // โหลดสดจาก Firestore แล้ว cache (เรียกตอน boot — ไม่ throw ถ้าออฟไลน์)
   async load(db) {
     try {
-      if (!db) return this.list();
-      const snap = await db.collection('config').doc('supervisors').get();
+      if (!db || !Project.id()) return this.list();
+      const snap = await Project.cfg(db, 'supervisors').get();
       if (!snap.exists) return this.list();
       const arr = (snap.data().list || []).filter(x => x && x.name);
       if (!arr.length) return this.list();
       this._list = arr;
-      try { localStorage.setItem(this.CACHE_KEY, JSON.stringify(arr)); } catch (_) {}
+      this._pid  = Project.id();
+      try { localStorage.setItem(this._k(), JSON.stringify(arr)); } catch (_) {}
     } catch (_) { /* ออฟไลน์ → ใช้ cache เดิม */ }
     return this.list();
   },
@@ -121,14 +128,19 @@ const Supervisors = {
 const DataRound = {
   CACHE_KEY: '_is_data_round_v1',
   _r: null,
+  _pid: null,     // โครงการที่ _r ถืออยู่ — แต่ละโครงการมีรอบเก็บข้อมูลของตัวเอง
+
+  _k() { return this.CACHE_KEY + '__' + (Project.id() || 'none'); },
 
   // อ่านแบบ sync (ใช้ตอน render/sync) — คืน { since, label }
   get() {
-    if (this._r) return this._r;
+    const pid = Project.id() || 'none';
+    if (this._r && this._pid === pid) return this._r;
     try {
-      const raw = localStorage.getItem(this.CACHE_KEY);
+      const raw = localStorage.getItem(this._k());
       this._r = raw ? JSON.parse(raw) : { since: '', label: '' };
     } catch (_) { this._r = { since: '', label: '' }; }
+    this._pid = pid;
     return this._r;
   },
   since() { return this.get().since || ''; },
@@ -136,11 +148,12 @@ const DataRound = {
 
   async load(db) {
     try {
-      if (!db) return this.get();
-      const snap = await db.collection('config').doc('data_round').get();
+      if (!db || !Project.id()) return this.get();
+      const snap = await Project.cfg(db, 'data_round').get();
       const d = snap.exists ? snap.data() : {};
       this._r = { since: d.since || '', label: d.label || '' };
-      try { localStorage.setItem(this.CACHE_KEY, JSON.stringify(this._r)); } catch (_) {}
+      this._pid = Project.id();
+      try { localStorage.setItem(this._k(), JSON.stringify(this._r)); } catch (_) {}
     } catch (_) { /* ออฟไลน์ → ใช้ cache เดิม */ }
     return this.get();
   },

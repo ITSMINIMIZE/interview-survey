@@ -50,6 +50,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="project-service.js"></script>
 <script src="auth-gate.js"></script>
 </head>
 <body>
@@ -427,7 +428,7 @@ async function rebuildSupervisors(){
       .map(u => ({ key: u.supervisorName, name: u.displayName || u.supervisorName }))
       .filter((v,i,a) => a.findIndex(x => x.key === v.key) === i)
       .sort((a,b) => a.name.localeCompare(b.name,'th'));
-    await db.collection('config').doc('supervisors').set({
+    await Project.cfg(db,'supervisors').set({
       list, updatedAt: new Date().toISOString(),
       updatedBy: auth.currentUser ? auth.currentUser.email.replace(EMAIL_DOMAIN,'') : ''
     });

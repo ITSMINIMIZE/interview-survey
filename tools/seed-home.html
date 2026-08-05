@@ -29,6 +29,7 @@
   .stat strong{display:block;font-size:20px;color:#0f172a;line-height:1}
   .stat span{font-size:10px;color:#64748b;margin-top:4px;display:block;letter-spacing:.04em}
 </style>
+<script src="project-service.js"></script>
 <script src="auth-gate.js"></script>
 </head>
 <body>
@@ -213,7 +214,7 @@ async function run() {
         vehicles,
         createdAt: new Date().toISOString()
       };
-      const hhRef = db.collection('households').doc(hhId);
+      const hhRef = Project.col(db,'households').doc(hhId);
       batch.set(hhRef, hh, { merge: true });
       ops++; writes++; hhCount++;
 

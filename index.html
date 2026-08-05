@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>INTERVIEW — เลือกแบบสอบถาม</title>
+  <title>INTERVIEW — ระบบสำรวจ</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
@@ -18,109 +18,78 @@
       justify-content: center;
       padding: 24px;
     }
-    .logo {
-      text-align: center;
-      margin-bottom: 48px;
-    }
+    .logo { text-align: center; margin-bottom: 40px; }
     .logo-icon { font-size: 36px; display: block; margin-bottom: 10px; }
-    .logo-title {
-      font-size: 28px;
-      font-weight: 700;
-      color: #f8fafc;
-      letter-spacing: .06em;
-    }
+    .logo-title { font-size: 28px; font-weight: 700; color: #f8fafc; letter-spacing: .06em; }
     .logo-sub { font-size: 14px; color: #64748b; margin-top: 6px; }
 
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-      max-width: 980px;
-      width: 100%;
+    .wrap { width: 100%; max-width: 980px; }
+
+    /* ---------- แถบโครงการปัจจุบัน ---------- */
+    .ctx {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap;
+      background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+      padding: 14px 18px; margin-bottom: 20px;
     }
+    .ctx-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .08em; }
+    .ctx-name { font-size: 17px; font-weight: 700; color: #f1f5f9; margin-top: 2px; }
+    .ctx-btn {
+      background: #334155; border: 1px solid #475569; color: #cbd5e1;
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      padding: 8px 14px; border-radius: 8px; cursor: pointer;
+    }
+    .ctx-btn:hover { background: #475569; color: #f1f5f9; }
+
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; width: 100%; }
     .card {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 16px;
-      padding: 32px 28px;
-      text-decoration: none;
-      color: inherit;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      transition: all .2s ease;
-      position: relative;
-      overflow: hidden;
+      background: #1e293b; border: 1px solid #334155; border-radius: 16px;
+      padding: 32px 28px; text-decoration: none; color: inherit;
+      display: flex; flex-direction: column; gap: 14px;
+      transition: all .2s ease; position: relative; overflow: hidden;
+      text-align: left; font-family: inherit; cursor: pointer;
     }
     .card::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      transition: opacity .2s ease;
-      border-radius: inherit;
+      content: ''; position: absolute; inset: 0; opacity: 0;
+      transition: opacity .2s ease; border-radius: inherit;
     }
     .card.home::before { background: linear-gradient(135deg, rgba(37,99,235,.15), rgba(6,182,212,.08)); }
     .card.road::before { background: linear-gradient(135deg, rgba(245,158,11,.12), rgba(239,68,68,.08)); }
     .card.dash::before { background: linear-gradient(135deg, rgba(139,92,246,.12), rgba(236,72,153,.08)); }
+    .card.proj::before { background: linear-gradient(135deg, rgba(16,185,129,.12), rgba(6,182,212,.08)); }
     .card:hover { border-color: #475569; transform: translateY(-4px); box-shadow: 0 20px 48px rgba(0,0,0,.4); }
     .card:hover::before { opacity: 1; }
     .card-icon { font-size: 40px; }
     .card-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 3px 10px;
-      border-radius: 999px;
-      width: fit-content;
-      text-transform: uppercase;
-      letter-spacing: .05em;
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
+      width: fit-content; text-transform: uppercase; letter-spacing: .05em;
     }
     .badge-active { background: rgba(16,185,129,.15); color: #34d399; border: 1px solid rgba(52,211,153,.2); }
-    .badge-soon { background: rgba(100,116,139,.15); color: #94a3b8; border: 1px solid rgba(148,163,184,.2); }
+    .badge-paused { background: rgba(100,116,139,.15); color: #94a3b8; border: 1px solid rgba(148,163,184,.2); }
     .card-title { font-size: 20px; font-weight: 700; color: #f1f5f9; }
     .card-desc { font-size: 14px; color: #64748b; line-height: 1.6; }
-    .card-action {
-      margin-top: 8px;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      font-weight: 600;
-    }
+    .card-action { margin-top: 8px; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
     .card.home .card-action { color: #60a5fa; }
     .card.road .card-action { color: #fb923c; }
     .card.dash .card-action { color: #a78bfa; }
+    .card.proj .card-action { color: #34d399; }
 
-    .footer {
-      margin-top: 48px;
-      font-size: 12px;
-      color: #334155;
-    }
+    .state { text-align: center; color: #64748b; font-size: 14px; padding: 40px 20px; line-height: 1.8; }
+    .state a { color: #60a5fa; }
+    .state-title { color: #cbd5e1; font-size: 16px; font-weight: 600; margin-bottom: 8px; }
 
-    @media (max-width: 700px) {
-      .cards { grid-template-columns: 1fr; }
-    }
+    .footer { margin-top: 48px; font-size: 12px; color: #334155; text-align: center; }
+    .hidden { display: none !important; }
 
-    /* ไอคอนเครื่องมือ admin — เล็ก มุมล่างขวา (เฉพาะคนที่รู้ · มี gate ป้องกันอีกชั้น) */
+    @media (max-width: 700px) { .cards { grid-template-columns: 1fr; } }
+
     .tools-fab {
-      position: fixed;
-      right: 16px;
-      bottom: 16px;
-      width: 34px;
-      height: 34px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 50%;
-      background: #1e293b;
-      border: 1px solid #334155;
-      color: #475569;
-      font-size: 15px;
-      text-decoration: none;
-      opacity: .35;
+      position: fixed; right: 16px; bottom: 16px;
+      width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; background: #1e293b; border: 1px solid #334155;
+      color: #475569; font-size: 15px; text-decoration: none; opacity: .35;
       transition: opacity .2s ease, color .2s ease, transform .2s ease;
     }
     .tools-fab:hover { opacity: 1; color: #94a3b8; transform: translateY(-2px); }
@@ -130,41 +99,159 @@
   <div class="logo">
     <span class="logo-icon">◈</span>
     <div class="logo-title">INTERVIEW</div>
-    <div class="logo-sub">เลือกประเภทแบบสอบถาม</div>
+    <div class="logo-sub" id="logoSub">ระบบสำรวจ</div>
   </div>
 
-  <div class="cards">
-    <a class="card home" href="Home/">
-      <span class="card-icon">
-        <img src="Home/icon.svg" alt="Home" style="width:48px;height:48px;border-radius:10px;display:block;" />
-      </span>
-      <span class="card-badge badge-active">● พร้อมใช้งาน</span>
-      <div class="card-title">Home Interview</div>
-      <div class="card-desc">แบบสอบถามสำหรับการสัมภาษณ์และสำรวจความคิดเห็นภายในบ้าน / ในสถานที่</div>
-      <div class="card-action">เข้าใช้งาน →</div>
-    </a>
+  <div class="wrap">
+    <!-- กำลังโหลด -->
+    <div id="vLoading" class="state">กำลังโหลด...</div>
 
-    <a class="card road" href="Roadside/">
-      <span class="card-icon">
-        <img src="Roadside/icon.svg" alt="Roadside" style="width:48px;height:48px;border-radius:10px;display:block;" />
-      </span>
-      <span class="card-badge badge-active">● พร้อมใช้งาน</span>
-      <div class="card-title">Roadside Interview</div>
-      <div class="card-desc">แบบสอบถามสำหรับการสัมภาษณ์ริมถนนและภาคสนาม</div>
-      <div class="card-action">เข้าใช้งาน →</div>
-    </a>
+    <!-- เลือกโครงการ -->
+    <div id="vProjects" class="hidden">
+      <div id="projList" class="cards"></div>
+      <div id="projEmpty" class="state hidden">
+        <div class="state-title">ยังไม่มีโครงการในระบบ</div>
+        สร้างโครงการแรกได้ที่ <a href="tools/projects.html">เครื่องมือผู้ดูแล → จัดการโครงการ</a>
+      </div>
+    </div>
 
-    <a class="card dash" href="Dashboard/">
-      <span class="card-icon">📊</span>
-      <span class="card-badge badge-active">● พร้อมใช้งาน</span>
-      <div class="card-title">ส่วนแสดงผล</div>
-      <div class="card-desc">แผนที่และสถิติสรุปผลการสำรวจจากทุกแบบสอบถาม</div>
-      <div class="card-action">เข้าใช้งาน →</div>
-    </a>
+    <!-- เมนูแบบสอบถาม (หลังเลือกโครงการแล้ว) -->
+    <div id="vApps" class="hidden">
+      <div class="ctx">
+        <div>
+          <div class="ctx-label">โครงการ</div>
+          <div class="ctx-name" id="ctxName">—</div>
+        </div>
+        <button class="ctx-btn" id="btnSwitch" type="button">เปลี่ยนโครงการ</button>
+      </div>
+
+      <div class="cards">
+        <a class="card home" id="lnkHome" href="Home/">
+          <span class="card-icon">
+            <img src="Home/icon.svg" alt="Home" style="width:48px;height:48px;border-radius:10px;display:block;" />
+          </span>
+          <span class="card-badge badge-active">● พร้อมใช้งาน</span>
+          <div class="card-title">Home Interview</div>
+          <div class="card-desc">แบบสอบถามสำหรับการสัมภาษณ์และสำรวจความคิดเห็นภายในบ้าน / ในสถานที่</div>
+          <div class="card-action">เข้าใช้งาน →</div>
+        </a>
+
+        <a class="card road" id="lnkRoad" href="Roadside/">
+          <span class="card-icon">
+            <img src="Roadside/icon.svg" alt="Roadside" style="width:48px;height:48px;border-radius:10px;display:block;" />
+          </span>
+          <span class="card-badge badge-active">● พร้อมใช้งาน</span>
+          <div class="card-title">Roadside Interview</div>
+          <div class="card-desc">แบบสอบถามสำหรับการสัมภาษณ์ริมถนนและภาคสนาม</div>
+          <div class="card-action">เข้าใช้งาน →</div>
+        </a>
+
+        <a class="card dash" id="lnkDash" href="Dashboard/">
+          <span class="card-icon">📊</span>
+          <span class="card-badge badge-active">● พร้อมใช้งาน</span>
+          <div class="card-title">ส่วนแสดงผล</div>
+          <div class="card-desc">แผนที่และสถิติสรุปผลการสำรวจของโครงการนี้</div>
+          <div class="card-action">เข้าใช้งาน →</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- อ่านรายการโครงการไม่ได้ -->
+    <div id="vDenied" class="state hidden">
+      <div class="state-title">ยังเลือกโครงการไม่ได้</div>
+      เปิดจาก<b>ลิงก์ที่ได้รับ</b> หรือ <a href="tools/">เข้าสู่ระบบผู้ดูแล</a> เพื่อเลือกโครงการ
+    </div>
   </div>
 
   <div class="footer">© 2026 INTERVIEW</div>
-
   <a class="tools-fab" href="tools/" title="เครื่องมือผู้ดูแล" aria-label="เครื่องมือผู้ดูแล">⚙</a>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="Home/js/project-service.js"></script>
+  <script>
+  // ===== หน้าแรก = ตัวเลือกโครงการ แล้วค่อยเข้าแบบสอบถาม =====
+  // ?project=<id> → ข้ามขั้นเลือก เข้าเมนูเลย (ใช้กับลิงก์ที่แจก)
+  // ?switch=1     → บังคับให้กลับมาหน้าเลือกโครงการ
+  const cfg = {
+    apiKey:            'AIzaSyB7uSMVYta28csoka_Kj160U1OuCFHvNWs',
+    authDomain:        'interview-survey.firebaseapp.com',
+    projectId:         'interview-survey',
+    storageBucket:     'interview-survey.firebasestorage.app',
+    messagingSenderId: '563577463134',
+    appId:             '1:563577463134:web:b55381c292cb5433b7afcf'
+  };
+  firebase.initializeApp(cfg);
+  const db   = firebase.firestore();
+  const auth = firebase.auth();
+
+  const $ = id => document.getElementById(id);
+  const show = id => { ['vLoading','vProjects','vApps','vDenied'].forEach(v => $(v).classList.toggle('hidden', v !== id)); };
+  const esc = s => (s == null ? '' : String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  const forceSwitch = new URLSearchParams(location.search).get('switch') === '1';
+  if (forceSwitch) Project.clear();
+
+  // เข้าเมนูแบบสอบถามของโครงการที่เลือกอยู่
+  async function enterApps() {
+    await Project.load(db);
+    $('ctxName').textContent = Project.meta ? Project.meta.name : Project.id();
+    $('logoSub').textContent = 'เลือกประเภทแบบสอบถาม';
+    // ต่อ ?project= ให้ทุกลิงก์ เผื่อเปิดคนละแท็บ/แชร์ต่อ
+    ['lnkHome','lnkRoad','lnkDash'].forEach(id => {
+      const a = $(id);
+      a.href = Project.withId(a.getAttribute('href'));
+    });
+    show('vApps');
+  }
+
+  // แสดงรายการโครงการให้เลือก
+  async function chooseProject() {
+    $('logoSub').textContent = 'เลือกโครงการ';
+    let docs;
+    try {
+      const snap = await db.collection('projects').get();
+      docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (e) {
+      // rules ไม่ให้ list (เช่น ผู้สำรวจ anonymous) → ต้องเปิดจากลิงก์
+      show('vDenied');
+      return;
+    }
+    if (!docs.length) {
+      $('projList').innerHTML = '';
+      $('projEmpty').classList.remove('hidden');
+      show('vProjects');
+      return;
+    }
+    docs.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    $('projList').innerHTML = docs.map(p => {
+      const active = p.status !== 'paused';
+      return `<button class="card proj" data-id="${esc(p.id)}" type="button">
+        <span class="card-icon">📋</span>
+        <span class="card-badge ${active ? 'badge-active' : 'badge-paused'}">● ${active ? 'กำลังสำรวจ' : 'พักไว้'}</span>
+        <div class="card-title">${esc(p.name || p.id)}</div>
+        <div class="card-desc">${esc(p.area || p.description || 'ไม่มีคำอธิบาย')}</div>
+        <div class="card-action">เลือกโครงการนี้ →</div>
+      </button>`;
+    }).join('');
+    $('projList').querySelectorAll('.card.proj').forEach(el => {
+      el.addEventListener('click', () => {
+        Project.set(el.dataset.id);
+        location.search = '?project=' + encodeURIComponent(el.dataset.id);
+      });
+    });
+    show('vProjects');
+  }
+
+  $('btnSwitch').addEventListener('click', () => { location.search = '?switch=1'; });
+
+  // ผู้สำรวจไม่มีบัญชี → anonymous ให้ผ่าน rules (เหมือนในแอป)
+  auth.onAuthStateChanged(async u => {
+    if (!u) { auth.signInAnonymously().catch(() => {}); return; }
+    if (Project.id() && !forceSwitch) await enterApps();
+    else await chooseProject();
+  });
+  </script>
 </body>
 </html>

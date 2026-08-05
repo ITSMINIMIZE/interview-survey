@@ -33,6 +33,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="project-service.js"></script>
 <script src="auth-gate.js"></script>
 </head>
 <body>
@@ -315,15 +316,15 @@ async function uploadZones() {
 
     // จำนวน chunk ชุดเก่า (ไว้ลบส่วนเกิน)
     st.innerHTML = 'กำลังอัปโหลด... (0/' + parts.length + ')';
-    const oldMeta = await db.collection('config').doc('zones').get();
+    const oldMeta = await Project.cfg(db,'zones').get();
     const oldChunks = oldMeta.exists ? (oldMeta.data().chunks || 0) : 0;
 
     // เขียน chunk ก่อน meta — คนอ่านจะไม่เจอ meta ที่ชี้ไป chunk ที่ยังไม่มี
     for (let i = 0; i < parts.length; i++) {
-      await db.collection('config').doc('zones_c' + i).set({ data: parts[i] });
+      await Project.cfg(db,'zones_c' + i).set({ data: parts[i] });
       st.innerHTML = `กำลังอัปโหลด... (${i + 1}/${parts.length})`;
     }
-    await db.collection('config').doc('zones').set({
+    await Project.cfg(db,'zones').set({
       chunks: parts.length,
       count: _geoOut.features.length,
       updatedAt: new Date().toISOString(),
@@ -331,7 +332,7 @@ async function uploadZones() {
     });
     // ลบ chunk เก่าที่เกินจำนวนใหม่
     for (let i = parts.length; i < oldChunks; i++) {
-      await db.collection('config').doc('zones_c' + i).delete().catch(() => {});
+      await Project.cfg(db,'zones_c' + i).delete().catch(() => {});
     }
     st.innerHTML = `<span class="ok">✅ อัปโหลดสำเร็จ ${_geoOut.features.length} โซน — เปิด Dashboard แล้วกด รีเฟรช จะใช้โซนชุดนี้ทันที</span>`;
   } catch (e) {

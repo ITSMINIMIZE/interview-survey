@@ -27,6 +27,7 @@
   .log .ok{color:#34d399}.log .err{color:#f87171}.log .info{color:#60a5fa}.log .warn{color:#fbbf24}
   .prov{font-size:11px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:14px}
 </style>
+<script src="project-service.js"></script>
 <script src="auth-gate.js"></script>
 </head>
 <body>
@@ -181,7 +182,7 @@ async function run(){
   log('โหลด places เดิมเพื่อตรวจซ้ำ...','info');
 
   let existing=[];
-  try{ const snap=await db.collection('places').get(); existing=snap.docs.map(d=>d.data()); log(`places เดิมมี ${existing.length}`,'info'); }
+  try{ const snap=await Project.col(db,'places').get(); existing=snap.docs.map(d=>d.data()); log(`places เดิมมี ${existing.length}`,'info'); }
   catch(e){ log('อ่าน places เดิมไม่ได้: '+e.message,'err'); $('writeBtn').disabled=false; return; }
 
   const distM=(a,b,c,d)=>{const R=6371000,r=x=>x*Math.PI/180;const dLat=r(c-a),dLon=r(d-b);const t=Math.sin(dLat/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(t));};
@@ -200,7 +201,7 @@ async function run(){
       const patch={ keywords:kw, updated_at:nowISO };
       if(!ex.user_adjusted){ patch.latitude=p.latitude; patch.longitude=p.longitude; ex.latitude=p.latitude; ex.longitude=p.longitude; }
       ex.keywords=kw;
-      batch.set(db.collection('places').doc(ex.id), patch, {merge:true});
+      batch.set(Project.col(db,'places').doc(ex.id), patch, {merge:true});
       merged++; $('cMerged').textContent=merged;
     } else {
       const id='PL-'+Date.now()+'-'+i;
@@ -210,7 +211,7 @@ async function run(){
         source:'preseed', confidence:1.0, user_adjusted:false, use_count:0,
         created_at:nowISO, created_by:'preseed', updated_at:nowISO
       };
-      batch.set(db.collection('places').doc(id),doc);
+      batch.set(Project.col(db,'places').doc(id),doc);
       existing.push(doc); // กันซ้ำภายในชุดเดียวกัน
       added++; $('cAdded').textContent=added;
     }

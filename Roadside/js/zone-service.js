@@ -9,12 +9,13 @@ const ZoneService = {
     if (this._features) return this._features;
     if (!FB.db) FB.init();
     if (!FB.db) throw new Error('Firebase ไม่พร้อม');
-    const meta = await FB.db.collection('config').doc('zones').get();
+    // โซนเป็นของแต่ละโครงการ → projects/{pid}/config/zones
+    const meta = await Project.cfg(FB.db, 'zones').get();
     if (!meta.exists || !(meta.data().chunks > 0))
-      throw new Error('ยังไม่มีข้อมูลโซนในระบบ (อัปโหลดผ่าน tools → Import Zones)');
+      throw new Error('โครงการนี้ยังไม่มีข้อมูลโซน (อัปโหลดผ่าน tools → Import Zones)');
     const n = meta.data().chunks;
     const docs = await Promise.all(
-      Array.from({ length: n }, (_, i) => FB.db.collection('config').doc('zones_c' + i).get())
+      Array.from({ length: n }, (_, i) => Project.cfg(FB.db, 'zones_c' + i).get())
     );
     if (docs.some(d => !d.exists)) throw new Error('ข้อมูลโซนในระบบไม่ครบชุด');
     const gj = JSON.parse(docs.map(d => d.data().data).join(''));

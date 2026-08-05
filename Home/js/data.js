@@ -50,6 +50,13 @@ const IDBStore = {
 const DB = {
   KEY:     'is_hi_survey_v2',   // localStorage เดิม (ใช้ migrate ครั้งแรก + สำรอง sync ข้อมูลเล็ก)
   IDB_KEY: 'data',
+
+  // ---- แยกข้อมูลในเครื่องตามโครงการ ----
+  // เครื่องเดียวอาจถูกใช้กับหลายโครงการ (สลับผ่านหน้าแรก/ลิงก์ผู้สำรวจ)
+  // ถ้าไม่แยก key ข้อมูลสำรวจของคนละโครงการจะทับกันใน IndexedDB
+  _pid()  { return (typeof Project !== 'undefined' && Project.id()) || 'none'; },
+  _key()  { return this.KEY + '__' + this._pid(); },
+  _ikey() { return this.IDB_KEY + '__' + this._pid(); },
   _data:   null,
   _ready:  false,
 
@@ -57,16 +64,16 @@ const DB = {
   async init() {
     if (this._ready) return this._data;
     try {
-      let data = await IDBStore.get(this.IDB_KEY);
+      let data = await IDBStore.get(this._ikey());
       if (!data) {
         // ครั้งแรกหลังอัปเดต: ย้ายข้อมูลเดิม localStorage → IndexedDB (ไม่ลบ localStorage ทิ้ง เผื่อ rollback)
-        const raw = localStorage.getItem(this.KEY);
-        if (raw) { data = JSON.parse(raw); await IDBStore.set(this.IDB_KEY, data); }
+        const raw = localStorage.getItem(this._key());
+        if (raw) { data = JSON.parse(raw); await IDBStore.set(this._ikey(), data); }
       }
       this._data = data || { households: [] };
     } catch (e) {
       console.warn('[DB] IndexedDB init ล้มเหลว ใช้ localStorage แทน:', e);
-      try { const raw = localStorage.getItem(this.KEY); this._data = raw ? JSON.parse(raw) : { households: [] }; }
+      try { const raw = localStorage.getItem(this._key()); this._data = raw ? JSON.parse(raw) : { households: [] }; }
       catch { this._data = { households: [] }; }
     }
     this._ready = true;
@@ -77,7 +84,7 @@ const DB = {
     if (this._data) return this._data;
     // fallback (เผื่อ getter ถูกเรียกก่อน init เสร็จ) — อ่าน localStorage แบบ sync
     try {
-      const raw = localStorage.getItem(this.KEY);
+      const raw = localStorage.getItem(this._key());
       this._data = raw ? JSON.parse(raw) : { households: [] };
     } catch { this._data = { households: [] }; }
     return this._data;
@@ -85,24 +92,24 @@ const DB = {
 
   save() {
     // ที่เก็บหลัก = IndexedDB (async, background) — ไม่มีเพดาน 5MB
-    IDBStore.set(this.IDB_KEY, this._data).catch(e => console.warn('[DB] IndexedDB save ล้มเหลว:', e));
+    IDBStore.set(this._ikey(), this._data).catch(e => console.warn('[DB] IndexedDB save ล้มเหลว:', e));
     // สำรอง sync ลง localStorage เฉพาะข้อมูลไม่ใหญ่ (เครื่องผู้สำรวจ) — เต็มก็ข้าม IDB คือหลัก
-    try { localStorage.setItem(this.KEY, JSON.stringify(this._data)); } catch {}
+    try { localStorage.setItem(this._key(), JSON.stringify(this._data)); } catch {}
   },
 
   // แทนที่ข้อมูลทั้งก้อน (ใช้ตอน pull จาก cloud) — persist ลง IndexedDB
   async replaceAll(newData) {
     this._data = newData;
     this._ready = true;
-    await IDBStore.set(this.IDB_KEY, newData);
-    try { localStorage.setItem(this.KEY, JSON.stringify(newData)); } catch {}
+    await IDBStore.set(this._ikey(), newData);
+    try { localStorage.setItem(this._key(), JSON.stringify(newData)); } catch {}
   },
 
   // ล้างข้อมูลในเครื่อง (IndexedDB + localStorage เดิม)
   async clearAll() {
     this._data = { households: [] };
-    try { await IDBStore.del(this.IDB_KEY); } catch {}
-    try { localStorage.removeItem(this.KEY); } catch {}
+    try { await IDBStore.del(this._ikey()); } catch {}
+    try { localStorage.removeItem(this._key()); } catch {}
   },
 
   // ===== HOUSEHOLDS =====

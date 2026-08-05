@@ -53,6 +53,11 @@ const FB = {
     return this.auth.onAuthStateChanged(cb);
   },
 
+  // ===== ขอบเขตโครงการ =====
+  // ข้อมูลสำรวจทั้งหมดอยู่ใต้ projects/{pid} — ทุก read/write ต้องผ่าน _col()
+  // โยน error ถ้ายังไม่ได้เลือกโครงการ (ดีกว่าเขียนหลงไปที่อื่นเงียบๆ)
+  _col() { return Project.col(this.db, this.COLLECTION); },
+
   deviceId() {
     let id = localStorage.getItem('_is_device_id');
     if (!id) { id = 'DEV-' + Date.now(); localStorage.setItem('_is_device_id', id); }
@@ -91,9 +96,9 @@ const FB = {
   // หมายเหตุ: auto-push (แก้ไขทีละรายการ) ส่งขึ้นเสมอ แม้เป็นระเบียนรอบก่อน
   // — การแก้ไขคือเจตนาชัดเจนของผู้ใช้ ต้อง sync ทับใน DB ได้
   // ส่วนการกด Sync ทั้งก้อนยังกรองข้อมูลเก่าออก (กันข้อมูลทดสอบไหลกลับทีละมากๆ)
-  pushHousehold(hh)      { if (hh) this._pushDoc(this.db.collection(this.COLLECTION).doc(hh.id), this._hhData(hh)); },
-  pushMember(hhId, m)    { if (m)  this._pushDoc(this.db.collection(this.COLLECTION).doc(hhId).collection('members').doc(m.id), this._memberData(m)); },
-  pushTrip(hhId, mId, t) { if (t)  this._pushDoc(this.db.collection(this.COLLECTION).doc(hhId).collection('members').doc(mId).collection('trips').doc(t.id), t); },
+  pushHousehold(hh)      { if (hh) this._pushDoc(this._col().doc(hh.id), this._hhData(hh)); },
+  pushMember(hhId, m)    { if (m)  this._pushDoc(this._col().doc(hhId).collection('members').doc(m.id), this._memberData(m)); },
+  pushTrip(hhId, mId, t) { if (t)  this._pushDoc(this._col().doc(hhId).collection('members').doc(mId).collection('trips').doc(t.id), t); },
 
   // ===== SYNC =====
   // admin: sync ทุก household ใน local (รวม nested) ขึ้น cloud
@@ -130,7 +135,7 @@ const FB = {
     let hhCount = 0, mCount = 0, tCount = 0;
 
     for (const hh of hhs) {
-      const hhRef = this.db.collection(this.COLLECTION).doc(hh.id);
+      const hhRef = this._col().doc(hh.id);
       // เขียน household เฉพาะ field ของมัน (ไม่รวม members ใน array)
       const { members, ...hhData } = hh;
       addOp(hhRef, { ...hhData, _device: device, _syncedAt: syncedAt });
@@ -207,7 +212,7 @@ const FB = {
   async pullAll() {
     if (!this.db) throw new Error('Firebase ไม่พร้อม');
     const snap = await this._withTimeout(
-      this.db.collection(this.COLLECTION).get({ source: 'server' })
+      this._col().get({ source: 'server' })
     );
     if (snap.empty) throw new Error('ไม่มีข้อมูลใน Firestore');
     const households = await this._loadNested(snap.docs);
@@ -224,7 +229,7 @@ const FB = {
   async _pullByField(field, value) {
     if (!this.db) throw new Error('Firebase ไม่พร้อม');
     const snap = await this._withTimeout(
-      this.db.collection(this.COLLECTION)
+      this._col()
         .where(field, '==', value)
         .get({ source: 'server' })
     );

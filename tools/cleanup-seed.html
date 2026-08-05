@@ -32,6 +32,7 @@
   .stat strong{display:block;font-size:20px;color:#0f172a;line-height:1}
   .stat span{font-size:10px;color:#64748b;margin-top:4px;display:block;letter-spacing:.04em}
 </style>
+<script src="project-service.js"></script>
 <script src="auth-gate.js"></script>
 </head>
 <body>
@@ -146,7 +147,7 @@ async function cleanup(which) {
 
 async function cleanupRoadside() {
   log('🚦 สแกน roadside_stations...', 'info');
-  const snap = await db.collection('roadside_stations').get();
+  const snap = await Project.col(db,'roadside_stations').get();
   const seedStations = snap.docs.filter(d => isSeed(d.id));
   log(`พบ station SEED ${seedStations.length} จุด (จากทั้งหมด ${snap.size})`, 'info');
 
@@ -164,7 +165,7 @@ async function cleanupRoadside() {
 
 async function cleanupHome() {
   log('🏘️ สแกน households...', 'info');
-  const snap = await db.collection('households').get();
+  const snap = await Project.col(db,'households').get();
   const seedHhs = snap.docs.filter(d => isSeed(d.id));
   log(`พบ household SEED ${seedHhs.length} หลัง (จากทั้งหมด ${snap.size})`, 'info');
 

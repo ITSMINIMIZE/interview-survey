@@ -1,85 +1,130 @@
 rules_version = '2';
 
-// Firestore Security Rules — interview-survey
-// ก๊อปทั้งไฟล์นี้ไปวางใน Firebase Console → Firestore Database → Rules → Publish
+// Firestore Security Rules — interview-survey (โครงสร้างแบบหลายโครงการ)
 //
-// 🔧 ตอนนี้ยังพัฒนาอยู่ → ใช้ firestore.rules.dev ไปก่อนได้
+// 🔧 ช่วงพัฒนาใช้ firestore.rules.dev ไปก่อนได้
 //    ไฟล์นี้คือตัวที่ต้อง publish "ก่อนเก็บข้อมูลจริง"
 //
+// ลำดับชั้น:
+//   users/{uid}                    ← บัญชีระดับระบบ (role: admin | user)
+//   config/app                     ← API keys ใช้ร่วมทั้งระบบ
+//   surveyLinks/{token}            ← ลิงก์แจกผู้สำรวจ
+//   projects/{pid}                 ← โครงการ
+//     ├─ members/{uid}             ← staff ที่ถูกแต่งตั้งในโครงการนี้
+//     ├─ households · roadside_stations · places
+//     └─ config/{zones|data_round|supervisors}
+//
 // หลักการ:
-//   - read/create/update ของข้อมูลสำรวจเปิด: แอปผู้สำรวจเขียนโดยไม่ต้อง login (anonymous auth)
-//   - delete ปิดเกือบทั้งหมด: ลบได้เฉพาะ doc ที่ id มีคำว่า SEED (ให้ tools/cleanup-seed ลบ test data ได้)
-//   - users/ + config/ เขียนได้เฉพาะ admin (เข้มกว่าระบบเดิมที่ให้ทุกบัญชีที่ login เขียน config ได้
-//     ซึ่งรวมผู้สำรวจ anonymous → แก้ API key ของทั้งระบบได้)
+//   - admin  = ทำได้ทุกอย่างทั้งระบบ
+//   - user   = เห็น/จัดการเฉพาะโครงการที่ตัวเองเป็น member (staff)
+//   - ผู้สำรวจ = anonymous ไม่มีบัญชี · อ่าน/เขียนข้อมูลสำรวจในโครงการได้ · ลบไม่ได้
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSeed(id) { return id.matches('.*SEED.*'); }
+    function isSignedIn() { return request.auth != null; }
+
+    function isRealAccount() {
+      return isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
 
     function isAdmin() {
-      return request.auth != null
+      return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // ===== บัญชี/สิทธิ์ (js/auth-role.js, tools/auth-gate.js, tools/users.html) =====
-    // อ่าน doc ตัวเอง: บัญชีที่ login แล้วอ่านสิทธิ์ตัวเองได้ (auth-role.js ต้องใช้ตอน login)
-    // list ทั้ง collection + สร้าง/แก้/ลบ: admin เท่านั้น (tools/users.html)
-    //
-    // ⚠️ BOOTSTRAP: admin คนแรกสร้างผ่านหน้าเว็บไม่ได้ (ยังไม่มี admin ให้ isAdmin() ผ่าน)
-    //    ต้องสร้าง doc users/{uid} ใน Firebase Console เองครั้งเดียว — ดู docs/SETUP.md ข้อ 4
-    match /users/{uid} {
-      allow get:    if request.auth != null && (request.auth.uid == uid || isAdmin());
-      allow list:   if isAdmin();
-      allow write:  if isAdmin();
+    // เป็น staff ในโครงการนี้หรือไม่ (memberUids เก็บไว้บน doc โครงการเพื่อให้เช็คได้ด้วย get() ครั้งเดียว)
+    function isMember(pid) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/projects/$(pid))
+        && get(/databases/$(database)/documents/projects/$(pid)).data.memberUids.hasAny([request.auth.uid]);
     }
 
-    // ===== Home Interview =====
-    match /households/{hhId} {
-      allow read: if true;
-      allow create, update: if true;
-      allow delete: if isSeed(hhId);
+    function canManage(pid) { return isAdmin() || isMember(pid); }
 
-      match /members/{mId} {
+    function isSeed(id) { return id.matches('.*SEED.*'); }
+
+    // ===== บัญชีระดับระบบ =====
+    // ⚠️ BOOTSTRAP: admin คนแรกสร้าง doc users/{uid} ใน Console เอง (ดู docs/SETUP.md ข้อ 4)
+    match /users/{uid} {
+      allow get:   if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow list:  if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ===== API keys (config/app) — ใช้ร่วมทั้งระบบ =====
+    match /config/{docId} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
+    // ===== ลิงก์สำหรับผู้สำรวจ =====
+    // get เปิด: ตัว token คือความลับอยู่แล้ว (รู้ id = ถือลิงก์)
+    // list ปิด: กันไล่เดา/ดูดรายการ token ทั้งหมด
+    match /surveyLinks/{token} {
+      allow get:   if true;
+      allow list:  if isRealAccount();
+      allow write: if isRealAccount();
+    }
+
+    // ===== โครงการ =====
+    match /projects/{pid} {
+      // อ่าน doc เดียว: เปิด — ผู้สำรวจ (anonymous) ต้องอ่านชื่อโครงการมาแสดงได้
+      allow get:  if true;
+      // list: เฉพาะบัญชีจริง (ผู้สำรวจไม่ต้องเห็นรายการโครงการทั้งหมด)
+      allow list: if isRealAccount();
+      allow create, update, delete: if isAdmin();
+
+      match /members/{uid} {
+        allow read:  if isRealAccount();
+        allow write: if isAdmin();
+      }
+
+      // ---- ตั้งค่าของโครงการ: โซน · รอบเก็บข้อมูล · รายชื่อผู้ควบคุม ----
+      match /config/{docId} {
+        allow read:  if true;                 // แอปอ่านโดยไม่ต้อง login
+        allow write: if canManage(pid);
+      }
+
+      // ---- Home Interview ----
+      match /households/{hhId} {
         allow read: if true;
         allow create, update: if true;
-        allow delete: if isSeed(hhId) || isSeed(mId);
+        allow delete: if isSeed(hhId);
 
-        match /trips/{tId} {
+        match /members/{mId} {
           allow read: if true;
           allow create, update: if true;
-          allow delete: if isSeed(hhId) || isSeed(mId) || isSeed(tId);
+          allow delete: if isSeed(hhId) || isSeed(mId);
+
+          match /trips/{tId} {
+            allow read: if true;
+            allow create, update: if true;
+            allow delete: if isSeed(hhId) || isSeed(mId) || isSeed(tId);
+          }
         }
       }
-    }
 
-    // ===== Roadside Interview =====
-    match /roadside_stations/{stId} {
-      allow read: if true;
-      allow create, update: if true;
-      allow delete: if isSeed(stId);
-
-      match /interviews/{ivId} {
+      // ---- Roadside Interview ----
+      match /roadside_stations/{stId} {
         allow read: if true;
         allow create, update: if true;
-        allow delete: if isSeed(stId) || isSeed(ivId);
+        allow delete: if isSeed(stId);
+
+        match /interviews/{ivId} {
+          allow read: if true;
+          allow create, update: if true;
+          allow delete: if isSeed(stId) || isSeed(ivId);
+        }
       }
-    }
 
-    // ===== สถานที่ (auto-learn, ใช้ร่วมกันทุกคน) =====
-    match /places/{placeId} {
-      allow read: if true;
-      allow create, update: if true;
-      allow delete: if false;
-    }
-
-    // ===== config/app (API keys) · supervisors · data_round · zones =====
-    // อ่านเปิด (แอปอ่าน key/รอบเก็บข้อมูล/ผังโซนโดยไม่ต้อง login)
-    // เขียนเฉพาะ admin — ทุกจุดที่เขียนอยู่ใน tools/ ซึ่ง gate ด้วย admin อยู่แล้ว
-    match /config/{docId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      // ---- คลังสถานที่ (auto-learn) — แยกตามโครงการ ----
+      match /places/{placeId} {
+        allow read: if true;
+        allow create, update: if true;
+        allow delete: if canManage(pid);
+      }
     }
   }
 }

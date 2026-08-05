@@ -62,11 +62,11 @@ function zFeatures() {
 // โหลดโซนจาก Firestore: config/zones = meta {chunks}, config/zones_c0..n = ชิ้น JSON
 async function loadCloudZones() {
   try {
-    const meta = await db.collection('config').doc('zones').get();
+    const meta = await Project.cfg(db, 'zones').get();
     if (!meta.exists || !(meta.data().chunks > 0)) return false;
     const n = meta.data().chunks;
     const docs = await Promise.all(
-      Array.from({ length: n }, (_, i) => db.collection('config').doc('zones_c' + i).get())
+      Array.from({ length: n }, (_, i) => Project.cfg(db, 'zones_c' + i).get())
     );
     if (docs.some(d => !d.exists)) return false; // ชุดไม่ครบ (อัปโหลดค้าง) — ใช้ไฟล์ฝังแทน
     const parsed = JSON.parse(docs.map(d => d.data().data).join(''));
@@ -162,7 +162,7 @@ const isOldRec = r => !!ROUND.since && String(r.createdAt || '') < ROUND.since;
 
 async function loadRound() {
   try {
-    const snap = await db.collection('config').doc('data_round').get();
+    const snap = await Project.cfg(db, 'data_round').get();
     const d = snap.exists ? snap.data() : {};
     ROUND = { since: d.since || '', label: d.label || '' };
   } catch (e) { ROUND = { since: '', label: '' }; }
@@ -188,7 +188,7 @@ async function loginAdmin(username, password) {
 // nested schema: households/{}/members/{}/trips/{} → ประกอบเป็น hh.members[].trips[]
 async function pullHouseholds() {
   // staff = ดึงเฉพาะทีมตัวเอง (ประหยัดค่าอ่านจริง — เดิมดึงทุกบ้าน + subcollection ต่อบ้าน)
-  let q = db.collection('households');
+  let q = Project.col(db, 'households');
   if (isStaff()) q = q.where('supervisorName', '==', ME.supervisorName);
   const snap = await q.get({ source: 'server' });
   const households = snap.docs.map(d => {
@@ -234,7 +234,7 @@ async function pullHouseholds() {
 }
 
 async function pullRoadside() {
-  let q = db.collection('roadside_stations');
+  let q = Project.col(db, 'roadside_stations');
   if (isStaff()) q = q.where('supervisorName', '==', ME.supervisorName);
   const stSnap = await q.get({ source: 'server' });
   const map = {};

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>จัดการโครงการ — Interview Survey</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Sarabun',sans-serif}
+  body{background:#0f172a;min-height:100vh;padding:24px;color:#cbd5e1}
+  .wrap{max-width:860px;margin:0 auto}
+  h1{font-size:24px;color:#f1f5f9;margin-bottom:6px}
+  .sub{color:#64748b;font-size:13px;margin-bottom:20px}
+  .back{display:inline-block;margin-bottom:18px;padding:8px 16px;background:#1e293b;border:1px solid #334155;border-radius:10px;color:#94a3b8;text-decoration:none;font-size:14px;font-weight:600}
+  .panel{background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;margin-bottom:18px}
+  .panel h2{font-size:16px;color:#f1f5f9;margin-bottom:14px}
+  label{display:block;font-size:12px;color:#94a3b8;margin:10px 0 4px;font-weight:600}
+  input,select,textarea{width:100%;padding:10px 12px;background:#0f172a;border:1px solid #334155;border-radius:9px;color:#e2e8f0;font-size:14px}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:#3b82f6}
+  textarea{resize:vertical;min-height:60px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  button{font-family:inherit;font-size:14px;font-weight:600;padding:10px 18px;border-radius:9px;border:1px solid transparent;cursor:pointer}
+  .btn-primary{background:#2563eb;color:#fff}
+  .btn-primary:hover{background:#1d4ed8}
+  .btn-ghost{background:#334155;color:#cbd5e1;border-color:#475569}
+  .btn-ghost:hover{background:#475569}
+  .btn-danger{background:rgba(239,68,68,.15);color:#fca5a5;border-color:rgba(252,165,165,.3)}
+  .btn-danger:hover{background:rgba(239,68,68,.25)}
+  .btn-sm{font-size:12px;padding:6px 12px}
+  .actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .item{background:#0f172a;border:1px solid #334155;border-radius:11px;padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+  .item-name{font-size:15px;font-weight:700;color:#f1f5f9}
+  .item-meta{font-size:12px;color:#64748b;margin-top:3px}
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600;margin-left:8px}
+  .pill.on{background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(110,231,183,.3)}
+  .pill.off{background:rgba(100,116,139,.15);color:#94a3b8;border:1px solid rgba(148,163,184,.25)}
+  .msg{padding:11px 14px;border-radius:9px;font-size:13px;margin-top:12px;display:none;line-height:1.6}
+  .msg.ok{display:block;background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(110,231,183,.25)}
+  .msg.err{display:block;background:rgba(239,68,68,.12);color:#fca5a5;border:1px solid rgba(252,165,165,.25)}
+  .empty{color:#64748b;font-size:13px;text-align:center;padding:26px}
+  .hint{font-size:12px;color:#64748b;margin-top:6px;line-height:1.6}
+  @media(max-width:640px){.row{grid-template-columns:1fr}}
+</style>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="project-service.js"></script>
+<script src="auth-gate.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">← กลับไปหน้าเครื่องมือ</a>
+  <h1>📋 จัดการโครงการ</h1>
+  <div class="sub">แต่ละโครงการมีข้อมูลสำรวจ · คลังสถานที่ · โซน · รอบเก็บข้อมูล เป็นของตัวเอง แยกขาดจากกัน</div>
+
+  <div class="panel">
+    <h2 id="formTitle">➕ สร้างโครงการใหม่</h2>
+    <label for="fName">ชื่อโครงการ *</label>
+    <input id="fName" placeholder="เช่น สำรวจการเดินทาง อ.บ้านไผ่ 2569" />
+    <div class="row">
+      <div>
+        <label for="fId">รหัสโครงการ (ใช้ใน URL) *</label>
+        <input id="fId" placeholder="banphai-2569" />
+        <div class="hint">a-z 0-9 และ - เท่านั้น · ตั้งแล้วเปลี่ยนไม่ได้</div>
+      </div>
+      <div>
+        <label for="fStatus">สถานะ</label>
+        <select id="fStatus">
+          <option value="active">กำลังสำรวจ</option>
+          <option value="paused">พักไว้</option>
+        </select>
+      </div>
+    </div>
+    <label for="fArea">พื้นที่ / คำอธิบาย</label>
+    <textarea id="fArea" placeholder="เช่น อ.บ้านไผ่ จ.ขอนแก่น"></textarea>
+    <div class="actions">
+      <button class="btn-primary" id="btnSave" type="button">บันทึก</button>
+      <button class="btn-ghost hidden" id="btnCancel" type="button" style="display:none">ยกเลิกการแก้ไข</button>
+    </div>
+    <div class="msg" id="formMsg"></div>
+  </div>
+
+  <div class="panel">
+    <h2>โครงการทั้งหมด</h2>
+    <div id="list"><div class="empty">กำลังโหลด...</div></div>
+    <div class="msg" id="listMsg"></div>
+  </div>
+</div>
+
+<script>
+// ===== จัดการโครงการ (admin เท่านั้น — auth-gate.js คุมอยู่) =====
+// โครงสร้าง: projects/{id} { name, area, status, memberUids[], createdAt, createdBy }
+// memberUids = uid ของ staff ที่ถูกแต่งตั้ง — ใช้ทั้งใน rules และหน้าเลือกโครงการ
+const db = firebase.firestore();
+const $  = id => document.getElementById(id);
+const esc = s => (s == null ? '' : String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const msg = (el, text, cls) => { el.textContent = text; el.className = 'msg ' + cls; };
+const clearMsg = el => { el.textContent = ''; el.className = 'msg'; };
+
+let editingId = null;
+
+function slug(s) {
+  return (s || '').toLowerCase().trim()
+    .replace(/[^a-z0-9฀-๿-]+/g, '-')
+    .replace(/^-+|-+$/g, '').slice(0, 60);
+}
+
+// เติมรหัสให้อัตโนมัติจากชื่อ ตราบใดที่ผู้ใช้ยังไม่พิมพ์เอง
+let idTouched = false;
+$('fId').addEventListener('input', () => { idTouched = true; });
+$('fName').addEventListener('input', () => {
+  if (!idTouched && !editingId) $('fId').value = slug($('fName').value);
+});
+
+async function load() {
+  clearMsg($('listMsg'));
+  try {
+    const snap = await db.collection('projects').get();
+    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                          .sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''));
+    if (!docs.length) { $('list').innerHTML = '<div class="empty">ยังไม่มีโครงการ — สร้างอันแรกด้านบน</div>'; return; }
+    $('list').innerHTML = docs.map(p => `
+      <div class="item">
+        <div>
+          <div class="item-name">${esc(p.name || p.id)}
+            <span class="pill ${p.status === 'paused' ? 'off' : 'on'}">${p.status === 'paused' ? 'พักไว้' : 'กำลังสำรวจ'}</span>
+          </div>
+          <div class="item-meta">${esc(p.id)}${p.area ? ' · ' + esc(p.area) : ''} · staff ${(p.memberUids||[]).length} คน</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <a class="btn-ghost btn-sm" style="text-decoration:none;display:inline-block" href="../index.html?project=${encodeURIComponent(p.id)}">เปิด</a>
+          <button class="btn-ghost btn-sm" data-edit="${esc(p.id)}" type="button">แก้ไข</button>
+          <button class="btn-danger btn-sm" data-del="${esc(p.id)}" type="button">ลบ</button>
+        </div>
+      </div>`).join('');
+
+    $('list').querySelectorAll('[data-edit]').forEach(b =>
+      b.addEventListener('click', () => startEdit(docs.find(x => x.id === b.dataset.edit))));
+    $('list').querySelectorAll('[data-del]').forEach(b =>
+      b.addEventListener('click', () => remove(docs.find(x => x.id === b.dataset.del))));
+  } catch (e) {
+    msg($('listMsg'), 'โหลดรายการไม่สำเร็จ: ' + e.message, 'err');
+  }
+}
+
+function startEdit(p) {
+  if (!p) return;
+  editingId = p.id;
+  $('formTitle').textContent = '✏️ แก้ไขโครงการ';
+  $('fName').value   = p.name || '';
+  $('fId').value     = p.id;
+  $('fId').disabled  = true;          // รหัสคือ path ใน Firestore — เปลี่ยนไม่ได้
+  $('fArea').value   = p.area || '';
+  $('fStatus').value = p.status || 'active';
+  $('btnCancel').style.display = '';
+  clearMsg($('formMsg'));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function resetForm() {
+  editingId = null; idTouched = false;
+  $('formTitle').textContent = '➕ สร้างโครงการใหม่';
+  $('fName').value = ''; $('fId').value = ''; $('fArea').value = '';
+  $('fStatus').value = 'active';
+  $('fId').disabled = false;
+  $('btnCancel').style.display = 'none';
+  clearMsg($('formMsg'));
+}
+$('btnCancel').addEventListener('click', resetForm);
+
+$('btnSave').addEventListener('click', async () => {
+  const name = $('fName').value.trim();
+  const id   = $('fId').value.trim();
+  if (!name) return msg($('formMsg'), 'ใส่ชื่อโครงการก่อน', 'err');
+  if (!id)   return msg($('formMsg'), 'ใส่รหัสโครงการก่อน', 'err');
+  if (!/^[a-z0-9-]+$/.test(id))
+    return msg($('formMsg'), 'รหัสโครงการใช้ได้เฉพาะ a-z 0-9 และ - (ห้ามเว้นวรรค/ภาษาไทย)', 'err');
+
+  const me = (firebase.auth().currentUser || {}).email || '';
+  try {
+    if (editingId) {
+      await db.collection('projects').doc(editingId).set({
+        name, area: $('fArea').value.trim(), status: $('fStatus').value,
+        updatedAt: new Date().toISOString(), updatedBy: me
+      }, { merge: true });
+      msg($('formMsg'), '✅ บันทึกแล้ว', 'ok');
+    } else {
+      // กันเขียนทับโครงการที่มีอยู่ (id ซ้ำ = ข้อมูลปนกันทันที)
+      const exist = await db.collection('projects').doc(id).get();
+      if (exist.exists) return msg($('formMsg'), 'รหัส "' + id + '" ถูกใช้แล้ว — ตั้งรหัสอื่น', 'err');
+      await db.collection('projects').doc(id).set({
+        name, area: $('fArea').value.trim(), status: $('fStatus').value,
+        memberUids: [],
+        createdAt: new Date().toISOString(), createdBy: me
+      });
+      msg($('formMsg'), '✅ สร้างโครงการ "' + name + '" แล้ว', 'ok');
+    }
+    resetForm();
+    await load();
+  } catch (e) {
+    msg($('formMsg'), 'บันทึกไม่สำเร็จ: ' + e.message, 'err');
+  }
+});
+
+async function remove(p) {
+  if (!p) return;
+  // Firestore ลบ doc แม่ไม่ได้ลบ subcollection ให้ — เตือนให้ชัด
+  if (!confirm(
+    'ลบโครงการ "' + (p.name || p.id) + '" ?\n\n' +
+    '⚠️ ข้อมูลสำรวจข้างใน (ครัวเรือน/จุดสำรวจ/สถานที่) จะ "ไม่" ถูกลบตาม\n' +
+    'มันจะยังอยู่ใน Firestore แต่เข้าถึงผ่านเว็บไม่ได้อีก\n\n' +
+    'ถ้าต้องการลบข้อมูลจริง ให้ลบใน Firebase Console\n\nยืนยันลบโครงการ?'
+  )) return;
+  try {
+    await db.collection('projects').doc(p.id).delete();
+    if (Project.id() === p.id) Project.clear();   // ที่จำไว้ในเครื่องต้องล้างด้วย
+    msg($('listMsg'), 'ลบโครงการแล้ว', 'ok');
+    await load();
+  } catch (e) {
+    msg($('listMsg'), 'ลบไม่สำเร็จ: ' + e.message, 'err');
+  }
+}
+
+// auth-gate.js ปล่อยผ่านแล้วค่อยโหลด (ไม่งั้นยิง query ก่อน login → permission-denied)
+(function waitGate(){
+  if (firebase.auth().currentUser) { load(); return; }
+  firebase.auth().onAuthStateChanged(u => { if (u && !u.isAnonymous) load(); });
+})();
+</script>
+</body>
+</html>

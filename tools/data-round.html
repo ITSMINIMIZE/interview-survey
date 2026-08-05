@@ -35,6 +35,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="project-service.js"></script>
 <script src="auth-gate.js"></script>
 </head>
 <body>
@@ -109,7 +110,7 @@ function isoToLocal(iso){
 
 async function loadCurrent(){
   try {
-    const snap = await db.collection('config').doc('data_round').get();
+    const snap = await Project.cfg(db,'data_round').get();
     const d = snap.exists ? snap.data() : {};
     if (!d.since) {
       $('cur').innerHTML = '<span class="big" style="color:#fbbf24">ยังไม่ได้ตั้งรอบ</span>'
@@ -132,8 +133,8 @@ async function preview(){
   msg($('previewMsg'), 'กำลังนับ...', 'info');
   try {
     const [hhSnap, stSnap] = await Promise.all([
-      db.collection('households').get(),
-      db.collection('roadside_stations').get()
+      Project.col(db,'households').get(),
+      Project.col(db,'roadside_stations').get()
     ]);
     const oldHh = hhSnap.docs.filter(d => String(d.data().createdAt || '') < iso).length;
     const oldSt = stSnap.docs.filter(d => String(d.data().createdAt || '') < iso).length;
@@ -151,7 +152,7 @@ async function save(){
   if (!confirm(`ตั้งรอบเก็บข้อมูลเริ่ม ${fmt(iso)}?\n\nข้อมูลที่บันทึกก่อนเวลานี้จะไม่ถูกส่งขึ้นระบบและไม่นับเข้ารายงาน`)) return;
   $('saveBtn').disabled = true;
   try {
-    await db.collection('config').doc('data_round').set({
+    await Project.cfg(db,'data_round').set({
       since: iso,
       label: $('label').value.trim(),
       setAt: new Date().toISOString(),
@@ -166,7 +167,7 @@ async function save(){
 async function clearRound(){
   if (!confirm('ยกเลิกการกรองตามช่วงเวลา?\n\nระบบจะรับข้อมูลทุกช่วงเวลาเหมือนเดิม (ข้อมูลเก่าในเครื่องผู้สำรวจจะ sync ขึ้นได้อีก)')) return;
   try {
-    await db.collection('config').doc('data_round').set({
+    await Project.cfg(db,'data_round').set({
       since: '', label: '',
       setAt: new Date().toISOString(),
       setBy: auth.currentUser ? auth.currentUser.email.replace(EMAIL_DOMAIN,'') : ''

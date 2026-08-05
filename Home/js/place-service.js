@@ -56,6 +56,17 @@ const PlaceService = {
     return null;
   },
 
+  // ---- ผูกกับโครงการ ----
+  // คลังสถานที่แยกตามโครงการ → projects/{pid}/places
+  // คืน null ถ้ายังไม่ได้เลือกโครงการ (ให้ caller ข้ามไป ไม่ใช่ throw กลางฟอร์ม)
+  _placesCol(db) {
+    try { return Project.col(db, this.COLLECTION); }
+    catch (_) { return null; }
+  },
+
+  // cache ใน localStorage ต้องแยกตามโครงการด้วย ไม่งั้นสลับโครงการแล้วสถานที่ปนกัน
+  _k(base) { return base + '__' + (Project.id() || 'none'); },
+
   _norm(s) {
     return (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
   },
@@ -72,18 +83,18 @@ const PlaceService = {
   // ===================== cache =====================
   _readLocal() {
     try {
-      const raw = localStorage.getItem(this.CACHE_KEY);
-      const ts  = parseInt(localStorage.getItem(this.CACHE_TS_KEY) || '0', 10);
+      const raw = localStorage.getItem(this._k(this.CACHE_KEY));
+      const ts  = parseInt(localStorage.getItem(this._k(this.CACHE_TS_KEY)) || '0', 10);
       if (raw) { this._cache = JSON.parse(raw) || []; this._cacheLoadedAt = ts || 0; }
-      this._lastSync = localStorage.getItem(this.CACHE_SYNC_KEY) || '';
+      this._lastSync = localStorage.getItem(this._k(this.CACHE_SYNC_KEY)) || '';
     } catch (_) {}
   },
 
   _writeLocal() {
     try {
-      localStorage.setItem(this.CACHE_KEY, JSON.stringify(this._cache));
-      localStorage.setItem(this.CACHE_TS_KEY, String(this._cacheLoadedAt));
-      localStorage.setItem(this.CACHE_SYNC_KEY, this._lastSync || '');
+      localStorage.setItem(this._k(this.CACHE_KEY), JSON.stringify(this._cache));
+      localStorage.setItem(this._k(this.CACHE_TS_KEY), String(this._cacheLoadedAt));
+      localStorage.setItem(this._k(this.CACHE_SYNC_KEY), this._lastSync || '');
     } catch (_) {}
   },
 
@@ -108,17 +119,19 @@ const PlaceService = {
 
     const db = this._db();
     if (!db) return this._cache; // offline / firebase ไม่พร้อม → ใช้ของเดิมไปก่อน
+    const col = this._placesCol(db);
+    if (!col) return this._cache; // ยังไม่ได้เลือกโครงการ → ใช้ของเดิมไปก่อน
 
     this._loadingPromise = (async () => {
       try {
         if (this._cache.length && this._lastSync) {
           // DELTA: อ่านเฉพาะ doc ที่ updated_at ใหม่ (เผื่อย้อนหลังกัน clock เพี้ยน) → base ที่นิ่งไม่ถูกดึงซ้ำ
           const since = new Date(Date.parse(this._lastSync) - this.SYNC_BUFFER_MS).toISOString();
-          const snap = await db.collection(this.COLLECTION).where('updated_at', '>', since).get();
+          const snap = await col.where('updated_at', '>', since).get();
           snap.docs.forEach(d => this._upsertCache(d.data()));
         } else {
           // FULL READ: ครั้งแรก/cache ว่าง → snapshot สมบูรณ์ (safety net · self-heal ทุกครั้งเปิดแอป)
-          const snap = await db.collection(this.COLLECTION).get();
+          const snap = await col.get();
           this._cache = snap.docs.map(d => d.data());
         }
         this._lastSync = this._maxUpdatedAt();
@@ -333,7 +346,7 @@ const PlaceService = {
       }
       this._writeLocal();
       if (db) {
-        try { await db.collection(this.COLLECTION).doc(existing.id).set(patch, { merge: true }); }
+        try { const c = this._placesCol(db); if (c) await c.doc(existing.id).set(patch, { merge: true }); }
         catch (e) { console.warn('[PlaceService] update failed:', e.message); }
       }
       return { action: 'increment', place: existing };
@@ -358,7 +371,7 @@ const PlaceService = {
     this._cache.push(place);
     this._writeLocal();
     if (db) {
-      try { await db.collection(this.COLLECTION).doc(place.id).set(place); }
+      try { const c = this._placesCol(db); if (c) await c.doc(place.id).set(place); }
       catch (e) { console.warn('[PlaceService] create failed:', e.message); }
     }
     return { action: 'create', place };
