@@ -1,0 +1,16 @@
+{
+  "name": "Home Interview — บ้านไผ่",
+  "short_name": "Home Survey",
+  "description": "แบบสำรวจการเดินทางในครัวเรือน โครงการวางผังเมืองรวมอำเภอบ้านไผ่",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#dbeafe",
+  "theme_color": "#2563eb",
+  "lang": "th",
+  "icons": [
+    { "src": "icon.svg",          "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

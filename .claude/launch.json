@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "interview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-l", "5502", "."],
+      "port": 5502
+    },
+    {
+      "name": "Dashboard",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-l", "5503", "Dashboard"],
+      "port": 5503
+    }
+  ]
+}

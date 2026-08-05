@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pre-seed Places — เติมสถานที่ก่อนสำรวจ</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Sarabun',sans-serif}
+  body{background:linear-gradient(160deg,#ecfeff,#f0fdfa,#f8fafc);min-height:100vh;padding:24px}
+  .card{max-width:760px;margin:0 auto;background:#fff;border-radius:16px;padding:26px;box-shadow:0 8px 40px rgba(0,0,0,.08)}
+  h1{font-size:21px;color:#0f172a;margin-bottom:4px}
+  .sub{font-size:13px;color:#64748b;margin-bottom:16px;line-height:1.6}
+  .info{background:#ecfeff;border:1px solid #a5f3fc;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;color:#155e75;line-height:1.7}
+  code{background:#f1f5f9;padding:1px 6px;border-radius:5px;color:#0369a1;font-size:12px}
+  textarea{width:100%;height:200px;padding:12px;border:1.5px solid #e2e8f0;border-radius:10px;font:13px ui-monospace,Menlo,monospace;color:#1e293b;outline:none;resize:vertical}
+  textarea:focus{border-color:#0891b2}
+  .row{display:flex;gap:10px;margin:14px 0}
+  .btn{padding:12px 18px;border:none;border-radius:10px;font:600 14px 'Sarabun';cursor:pointer;transition:all .15s}
+  .btn-go{background:#0891b2;color:#fff}.btn-go:hover{background:#0e7490}.btn-go:disabled{background:#cbd5e1;cursor:not-allowed}
+  .btn-ghost{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}
+  .stat{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+  .stat>div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;text-align:center}
+  .stat strong{display:block;font-size:22px;color:#0f172a;line-height:1}
+  .stat span{font-size:11px;color:#64748b;margin-top:4px;display:block;letter-spacing:.04em}
+  .log{background:#0f172a;color:#94a3b8;font:12px ui-monospace,Menlo,monospace;padding:14px;border-radius:8px;height:200px;overflow-y:auto;line-height:1.6}
+  .log .ok{color:#34d399}.log .err{color:#f87171}.log .info{color:#60a5fa}.log .warn{color:#fbbf24}
+  .prov{font-size:11px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:14px}
+</style>
+<script src="auth-gate.js"></script>
+</head>
+<body>
+<div class="card">
+  <a href="index.html" style="display:inline-block;margin-bottom:14px;color:#64748b;text-decoration:none;font-size:14px;font-weight:600;">← กลับไปหน้าเครื่องมือ</a>
+  <h1>📍 Pre-seed Places</h1>
+  <div class="sub">เติมสถานที่ยอดฮิตในพื้นที่ลง Firestore <code>places</code> ก่อนวันสำรวจ → surveyor ค้นเจอใน local ทันที ไม่ต้องยิง Longdo/Google (ประหยัด quota + เร็ว)</div>
+
+  <div class="info">
+    <b>ไฟล์ Excel — 4 คอลัมน์ (มีหัวตาราง):</b>
+    <code>place_name</code> · <code>latitude</code> · <code>longitude</code> · <code>keywords</code> (ทางเลือก · คำค้นอื่น คั่นด้วย <code>;</code>)<br>
+    ระบบเติมให้เอง: id, source, use_count ฯลฯ · กด <b>ดาวน์โหลด template</b> ไปกรอกได้<br>
+    <b>ซ้ำ?</b> ชื่อตรง+พิกัดใกล้ (&lt;150m) = <b>รวมกัน</b> (เก็บ use_count เดิม · รวม keywords · ไม่เกิด doc ซ้ำ)<br>
+    🔄 <b>สลับ lat/lon ให้อัตโนมัติ</b> ถ้ากรอกสลับ (ตรวจทีละแถว) · พิกัดนอกไทยจะถูกข้าม + แจ้งใน log
+  </div>
+
+  <div class="row">
+    <label class="btn btn-go" style="display:inline-flex;align-items:center;cursor:pointer;">📂 เลือกไฟล์ Excel
+      <input id="file" type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFile(this.files[0])" />
+    </label>
+    <button class="btn btn-ghost" onclick="downloadTemplate()">⬇️ ดาวน์โหลด template</button>
+  </div>
+
+  <div style="font-size:12px;color:#64748b;margin:6px 0 4px;">หรือพิมพ์/วางเองด้านล่าง — บรรทัดละ <code>ชื่อ, lat, lon, [keywords;...]</code> (ขึ้นต้น <code>#</code> = ข้าม):</div>
+  <textarea id="input" placeholder="โรงพยาบาลบ้านไผ่, 16.0588, 102.7302, รพ;hospital;โรงพยาบาล
+ตลาดสดบ้านไผ่, 16.0601, 102.7338
+..."></textarea>
+
+  <div class="row">
+    <button class="btn btn-ghost" onclick="preview()">👁 ตรวจ/ดูตัวอย่าง</button>
+    <button class="btn btn-go" id="writeBtn" onclick="run()" disabled>💾 เขียนเข้า places</button>
+    <button class="btn btn-ghost" onclick="clearLog()">ล้าง log</button>
+  </div>
+
+  <div class="stat">
+    <div><strong id="cParsed">0</strong><span>อ่านได้</span></div>
+    <div><strong id="cAdded">0</strong><span>เพิ่มใหม่</span></div>
+    <div><strong id="cMerged">0</strong><span>รวม/อัปเดต</span></div>
+  </div>
+
+  <div class="log" id="log"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+const cfg={apiKey:'PASTE_API_KEY',authDomain:'PASTE_PROJECT_ID.firebaseapp.com',projectId:'PASTE_PROJECT_ID',storageBucket:'PASTE_PROJECT_ID.firebasestorage.app',messagingSenderId:'PASTE_SENDER_ID',appId:'PASTE_APP_ID'};
+if(!firebase.apps.length)firebase.initializeApp(cfg);
+const db=firebase.firestore();
+
+const $=id=>document.getElementById(id);
+const logEl=$('log');
+const log=(m,c='info')=>{logEl.innerHTML+=`<div class="${c}">[${new Date().toLocaleTimeString('th-TH')}] ${m}</div>`;logEl.scrollTop=logEl.scrollHeight;};
+const clearLog=()=>logEl.innerHTML='';
+const norm=s=>(s||'').toString().trim().toLowerCase().replace(/\s+/g,' ');
+
+// ขอบเขตไทย: lat 5–21, lon 96–106 (สองช่วงไม่ทับกัน → ตรวจการสลับได้แม่น)
+// คืน status: ok | swapped (สลับให้แล้ว) | bad (นอกไทย/พิมพ์ผิด)
+function fixCoord(lat, lon){
+  const inLat=v=>v>=5&&v<=21, inLon=v=>v>=96&&v<=106;
+  if(inLat(lat)&&inLon(lon)) return {lat,lon,status:'ok'};
+  if(inLat(lon)&&inLon(lat)) return {lat:lon,lon:lat,status:'swapped'};   // สลับ
+  return {lat,lon,status:'bad'};
+}
+
+let _parsed=[];
+
+// ===== Excel import (SheetJS) =====
+function getCol(row, names){
+  for(const k of Object.keys(row)){
+    if(names.includes(k.toString().trim().toLowerCase())) return row[k];
+  }
+  return '';
+}
+async function handleFile(file){
+  if(!file) return;
+  clearLog(); log('อ่านไฟล์: '+file.name,'info');
+  try{
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+    const out=[]; let bad=0;
+    for(const row of rows){
+      const name=(getCol(row,['place_name','name','ชื่อ','ชื่อสถานที่'])||'').toString().trim();
+      const lat=parseFloat(getCol(row,['latitude','lat']));
+      const lon=parseFloat(getCol(row,['longitude','lon','lng']));
+      if(!name||isNaN(lat)||isNaN(lon)){ bad++; continue; }
+      const f=fixCoord(lat,lon);
+      if(f.status==='bad'){ bad++; log(`ข้าม (พิกัดนอกไทย): ${name} (${lat}, ${lon})`,'warn'); continue; }
+      if(f.status==='swapped') log(`🔄 สลับ lat/lon ให้: ${name} → (${f.lat}, ${f.lon})`,'warn');
+      const keywords=(getCol(row,['keywords','keyword','คำค้น'])||'').toString().split(/[;,]/).map(s=>s.trim()).filter(Boolean);
+      out.push({place_name:name,latitude:f.lat,longitude:f.lon,keywords});
+    }
+    _parsed=out;
+    $('cParsed').textContent=out.length; $('cAdded').textContent=0; $('cMerged').textContent=0;
+    out.slice(0,10).forEach(p=>log(`✓ ${p.place_name} (${p.latitude}, ${p.longitude})${p.keywords.length?' · kw: '+p.keywords.join(', '):''}`,'ok'));
+    if(out.length>10) log(`... และอีก ${out.length-10} รายการ`,'info');
+    log(`อ่านจาก Excel ได้ ${out.length} · ข้ามที่อ่านไม่ได้ ${bad}`, out.length?'ok':'warn');
+    $('writeBtn').disabled = out.length===0;
+  }catch(e){ log('อ่านไฟล์ไม่สำเร็จ: '+e.message,'err'); }
+}
+function downloadTemplate(){
+  const ws=XLSX.utils.aoa_to_sheet([
+    ['place_name','latitude','longitude','keywords'],
+    ['โรงพยาบาลบ้านไผ่',16.0588,102.7302,'รพ;hospital;โรงพยาบาล'],
+    ['ตลาดสดบ้านไผ่',16.0601,102.7338,'']
+  ]);
+  ws['!cols']=[{wch:34},{wch:12},{wch:12},{wch:30}];
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'places');
+  XLSX.writeFile(wb,'places-template.xlsx');
+}
+
+// parse textarea → [{place_name,lat,lon,keywords}]
+function parseInput(){
+  const lines=$('input').value.split('\n');
+  const out=[]; let bad=0;
+  for(const raw of lines){
+    const line=raw.trim();
+    if(!line||line.startsWith('#'))continue;
+    const parts=line.split(',').map(s=>s.trim());
+    const name=parts[0], lat=parseFloat(parts[1]), lon=parseFloat(parts[2]);
+    if(!name||isNaN(lat)||isNaN(lon)){ bad++; log(`ข้าม (อ่านไม่ได้): ${line}`,'warn'); continue; }
+    const f=fixCoord(lat,lon);
+    if(f.status==='bad'){ bad++; log(`ข้าม (พิกัดนอกไทย): ${name} (${lat}, ${lon})`,'warn'); continue; }
+    if(f.status==='swapped') log(`🔄 สลับ lat/lon ให้: ${name} → (${f.lat}, ${f.lon})`,'warn');
+    const keywords=(parts[3]||'').split(';').map(s=>s.trim()).filter(Boolean);
+    out.push({place_name:name,latitude:f.lat,longitude:f.lon,keywords});
+  }
+  return {out,bad};
+}
+
+function preview(){
+  clearLog();
+  const {out,bad}=parseInput();
+  _parsed=out;
+  $('cParsed').textContent=out.length;
+  $('cAdded').textContent=0; $('cMerged').textContent=0;
+  if(bad) log(`ผิดรูปแบบ ${bad} บรรทัด (ข้าม)`,'warn');
+  out.slice(0,10).forEach(p=>log(`✓ ${p.place_name} (${p.latitude}, ${p.longitude})${p.keywords.length?' · kw: '+p.keywords.join(', '):''}`,'ok'));
+  if(out.length>10) log(`... และอีก ${out.length-10} รายการ`,'info');
+  log(`อ่านได้ ${out.length} · ผิดรูปแบบ ${bad}`, out.length?'ok':'warn');
+  $('writeBtn').disabled = out.length===0;
+}
+
+async function run(){
+  if(!_parsed.length){ preview(); if(!_parsed.length){ log('ไม่มีข้อมูลให้เขียน','warn'); return; } }
+  if(!confirm(`เขียน/รวม ${_parsed.length} สถานที่เข้า places? (ซ้ำ = รวมกัน ไม่สร้าง doc ใหม่)`)) return;
+  $('writeBtn').disabled=true;
+  log('โหลด places เดิมเพื่อตรวจซ้ำ...','info');
+
+  let existing=[];
+  try{ const snap=await db.collection('places').get(); existing=snap.docs.map(d=>d.data()); log(`places เดิมมี ${existing.length}`,'info'); }
+  catch(e){ log('อ่าน places เดิมไม่ได้: '+e.message,'err'); $('writeBtn').disabled=false; return; }
+
+  const distM=(a,b,c,d)=>{const R=6371000,r=x=>x*Math.PI/180;const dLat=r(c-a),dLon=r(d-b);const t=Math.sin(dLat/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(t));};
+  const findDup=p=>existing.find(e=>norm(e.place_name)===norm(p.place_name)&&distM(p.latitude,p.longitude,e.latitude,e.longitude)<150);
+
+  let added=0,merged=0,batch=db.batch(),ops=0;
+  const nowISO=new Date().toISOString();
+  const commitIf=async()=>{ if(ops>=400){ await batch.commit(); batch=db.batch(); ops=0; } };
+
+  for(let i=0;i<_parsed.length;i++){
+    const p=_parsed[i];
+    const ex=findDup(p);
+    if(ex){
+      // รวม: keep doc เดิม (use_count คงไว้) · รวม keywords · อัปเดตพิกัดถ้ายังไม่เคยลากปรับ
+      const kw=Array.from(new Set([...(ex.keywords||[]), ...p.keywords]));
+      const patch={ keywords:kw, updated_at:nowISO };
+      if(!ex.user_adjusted){ patch.latitude=p.latitude; patch.longitude=p.longitude; ex.latitude=p.latitude; ex.longitude=p.longitude; }
+      ex.keywords=kw;
+      batch.set(db.collection('places').doc(ex.id), patch, {merge:true});
+      merged++; $('cMerged').textContent=merged;
+    } else {
+      const id='PL-'+Date.now()+'-'+i;
+      const doc={
+        id, place_name:p.place_name, name_lower:norm(p.place_name), keywords:p.keywords,
+        latitude:p.latitude, longitude:p.longitude,
+        source:'preseed', confidence:1.0, user_adjusted:false, use_count:0,
+        created_at:nowISO, created_by:'preseed', updated_at:nowISO
+      };
+      batch.set(db.collection('places').doc(id),doc);
+      existing.push(doc); // กันซ้ำภายในชุดเดียวกัน
+      added++; $('cAdded').textContent=added;
+    }
+    ops++; await commitIf();
+  }
+  if(ops>0) await batch.commit();
+  log(`🎉 เสร็จ — เพิ่มใหม่ ${added} · รวม/อัปเดต ${merged}`,'ok');
+  $('writeBtn').disabled=false;
+}
+</script>
+</body>
+</html>

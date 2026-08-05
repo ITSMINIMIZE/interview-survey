@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Home Interview — แบบสำรวจการเดินทาง</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Home Survey" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <button class="back-btn" id="backBtn" style="display:none" onclick="App.goBack()">← กลับ</button>
+      <div class="topbar-brand" onclick="App.navigate('home')" style="cursor:pointer">
+        🏠 <span>Home Interview</span>
+      </div>
+      <a class="tb-link" id="topbarRight" href="../index.html">◈ เมนูหลัก</a>
+    </div>
+    <div class="breadcrumb" id="breadcrumb"></div>
+  </header>
+
+  <main id="app"></main>
+
+  <div class="toast-wrap" id="toastWrap"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <!-- ===== Map Picker — Leaflet + OpenStreetMap (ฟรี ไม่ต้อง API key) ===== -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/auth-role.js"></script>
+  <script src="js/zone-service.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/place-service.js"></script>
+  <script src="js/map-leaflet.js"></script>
+  <script src="js/firebase.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

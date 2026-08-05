@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Import Zones — Banphai Survey</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Sarabun',sans-serif}
+  body{background:#0f172a;min-height:100vh;padding:24px;color:#e2e8f0}
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:22px;color:#f1f5f9;margin-bottom:4px}
+  .sub{color:#64748b;font-size:13px;margin-bottom:20px}
+  a.back{display:inline-block;margin-bottom:16px;padding:7px 14px;background:#1e293b;border:1px solid #334155;border-radius:10px;color:#94a3b8;text-decoration:none;font-size:13px;font-weight:600}
+  .card{background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px;margin-bottom:16px}
+  .card h2{font-size:15px;color:#f1f5f9;margin-bottom:12px}
+  .req{display:inline-block;background:#0f172a;border:1px solid #475569;border-radius:8px;padding:3px 10px;margin:0 6px 6px 0;font-size:13px;font-family:monospace;color:#93c5fd}
+  #drop{border:2px dashed #475569;border-radius:12px;padding:34px;text-align:center;color:#94a3b8;cursor:pointer;transition:all .15s}
+  #drop:hover,#drop.over{border-color:#3b82f6;background:rgba(59,130,246,.06);color:#cbd5e1}
+  #drop input{display:none}
+  .btn{padding:10px 18px;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+  .btn-primary{background:#3b82f6;color:#fff}
+  .btn-primary:disabled{background:#334155;color:#64748b;cursor:not-allowed}
+  .row{border-bottom:1px solid #33415580;padding:7px 0;font-size:13px;display:flex;justify-content:space-between;gap:12px}
+  .row:last-child{border:none}
+  .ok{color:#6ee7b7}.err{color:#fca5a5}.warn{color:#fcd34d}.muted{color:#64748b}
+  code{font-family:monospace;background:#0f172a;padding:1px 6px;border-radius:5px;font-size:12px}
+  .rep{max-height:280px;overflow:auto}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  td{padding:5px 8px;border-bottom:1px solid #33415560}
+</style>
+<script src="vendor/shp.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="auth-gate.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">← กลับ Tools</a>
+  <h1>🗺️ Import Zones → zones.js</h1>
+  <div class="sub">อัปโหลด shapefile (.zip) หรือ GeoJSON → ตรวจ field บังคับ → สร้าง <code>Dashboard/js/zones.js</code></div>
+
+  <div class="card">
+    <h2>Field ที่บังคับ (ทุก feature ต้องมี)</h2>
+    <div id="reqList"></div>
+    <div class="muted" style="font-size:12px;margin-top:8px">
+      • <b>N</b> = เลขโซนในพื้นที่ (ใช้เป็นชื่อโซน "โซน N") &nbsp;•&nbsp; <b>DISTRICT</b>/<b>D_NAME</b> = รหัส/ชื่ออำเภอ (ใช้ในตาราง OD Top-10)<br>
+      • shapefile ให้ zip รวม <code>.shp .shx .dbf .prj</code> แล้วอัปโหลด (reproject เป็น WGS84 ให้อัตโนมัติจาก .prj)
+    </div>
+  </div>
+
+  <div class="card">
+    <div id="drop">
+      <div style="font-size:34px">📂</div>
+      <div style="margin-top:8px">ลากไฟล์มาวาง หรือ <b style="color:#93c5fd">คลิกเลือก</b></div>
+      <div class="muted" style="font-size:12px;margin-top:4px">.zip (shapefile) / .geojson / .json</div>
+      <input type="file" id="file" accept=".zip,.geojson,.json" />
+    </div>
+    <div id="status" class="muted" style="margin-top:12px;font-size:13px"></div>
+  </div>
+
+  <div class="card" id="reportCard" style="display:none">
+    <h2>ผลตรวจสอบ</h2>
+    <div id="report"></div>
+    <div style="margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-primary" id="upBtn" disabled onclick="uploadZones()">☁️ อัปโหลดเข้าระบบ (Dashboard ใช้ทันที)</button>
+      <button class="btn" id="dlBtn" disabled onclick="downloadZones()" style="background:#334155;color:#cbd5e1">⬇ ดาวน์โหลด zones.js</button>
+      <span id="dlNote" class="muted" style="font-size:12px"></span>
+    </div>
+    <div id="upStatus" style="margin-top:10px;font-size:13px"></div>
+  </div>
+</div>
+
+<script>
+const REQUIRED = ['N', 'DISTRICT', 'D_NAME'];
+document.getElementById('reqList').innerHTML = REQUIRED.map(r => `<span class="req">${r}</span>`).join('');
+
+let _generated = null; // zones.js content string
+let _geoOut    = null; // GeoJSON object เดียวกัน — ใช้อัปโหลดเข้า Firestore
+
+// ---- helpers ----
+function getProp(props, key) {
+  if (!props) return undefined;
+  const found = Object.keys(props).find(k => k.toLowerCase() === key.toLowerCase());
+  return found === undefined ? undefined : props[found];
+}
+const nonEmpty = v => v !== undefined && v !== null && String(v).trim() !== '';
+
+function roundCoords(g) {
+  const r = x => Array.isArray(x) ? x.map(r) : (typeof x === 'number' ? +x.toFixed(6) : x);
+  return { ...g, coordinates: r(g.coordinates) };
+}
+
+function bboxOf(features) {
+  let minLon = 1e9, maxLon = -1e9, minLat = 1e9, maxLat = -1e9;
+  const walk = c => { if (typeof c[0] === 'number') { minLon = Math.min(minLon, c[0]); maxLon = Math.max(maxLon, c[0]); minLat = Math.min(minLat, c[1]); maxLat = Math.max(maxLat, c[1]); } else c.forEach(walk); };
+  features.forEach(f => f.geometry && f.geometry.coordinates && walk(f.geometry.coordinates));
+  return { minLon, maxLon, minLat, maxLat };
+}
+
+// ---- core: validate (exposed for tests) ----
+function validateFeatures(features) {
+  const problems = [];   // {i, missing:[...]}
+  features.forEach((f, i) => {
+    const miss = REQUIRED.filter(r => !nonEmpty(getProp(f.properties, r)));
+    if (miss.length) problems.push({ i, missing: miss });
+  });
+  // duplicate N
+  const nCounts = {};
+  features.forEach(f => { const n = getProp(f.properties, 'N'); if (nonEmpty(n)) nCounts[n] = (nCounts[n] || 0) + 1; });
+  const dupN = Object.entries(nCounts).filter(([, c]) => c > 1).map(([n]) => n);
+  const foundKeys = features[0] ? Object.keys(features[0].properties || {}) : [];
+  return { problems, dupN, foundKeys };
+}
+
+// ---- core: build output GeoJSON (exposed for tests) ----
+function buildGeoOut(features) {
+  return {
+    type: 'FeatureCollection', name: 'zones',
+    features: features.map(f => ({
+      type: 'Feature',
+      properties: {
+        name:     'โซน ' + getProp(f.properties, 'N'),
+        N:        getProp(f.properties, 'N'),
+        DISTRICT: getProp(f.properties, 'DISTRICT'),
+        D_NAME:   getProp(f.properties, 'D_NAME')
+      },
+      geometry: roundCoords(f.geometry)
+    }))
+  };
+}
+
+function buildZonesJs(features) {
+  const banner = '// ===== ZONES GEOJSON =====\n' +
+                 '// Generated by tools/import-zones.html — fields: name(N), DISTRICT, D_NAME\n\n';
+  return banner + 'const ZONES_GEOJSON = ' + JSON.stringify(buildGeoOut(features)) + ';\n';
+}
+window.validateFeatures = validateFeatures;
+window.buildZonesJs = buildZonesJs;
+
+// ---- UI flow ----
+const dropEl = document.getElementById('drop');
+const fileEl = document.getElementById('file');
+dropEl.onclick = () => fileEl.click();
+['dragover','dragenter'].forEach(e => dropEl.addEventListener(e, ev => { ev.preventDefault(); dropEl.classList.add('over'); }));
+['dragleave','drop'].forEach(e => dropEl.addEventListener(e, ev => { ev.preventDefault(); dropEl.classList.remove('over'); }));
+dropEl.addEventListener('drop', ev => { const f = ev.dataTransfer.files[0]; if (f) handleFile(f); });
+fileEl.addEventListener('change', () => { if (fileEl.files[0]) handleFile(fileEl.files[0]); });
+
+// ---- unzip เอง (แทน unzip ใน shpjs) เพื่อคุม encoding ของ .dbf ได้ ----
+async function unzip(buf) {
+  const u8 = new Uint8Array(buf), dv = new DataView(buf);
+  let e = buf.byteLength - 22;                       // หา End of Central Directory
+  while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+  if (e < 0) throw new Error('ไม่ใช่ไฟล์ zip');
+  const cnt = dv.getUint16(e + 10, true);
+  let p = dv.getUint32(e + 16, true);
+  const out = {};
+  for (let i = 0; i < cnt; i++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const method  = dv.getUint16(p + 10, true);
+    const csize   = dv.getUint32(p + 20, true);
+    const nameLen = dv.getUint16(p + 28, true), extraLen = dv.getUint16(p + 30, true), cmtLen = dv.getUint16(p + 32, true);
+    const lho     = dv.getUint32(p + 42, true);
+    const name    = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nameLen));
+    p += 46 + nameLen + extraLen + cmtLen;
+    if (name.endsWith('/')) continue;
+    const dataOff = lho + 30 + dv.getUint16(lho + 26, true) + dv.getUint16(lho + 28, true);
+    const raw = u8.slice(dataOff, dataOff + csize);
+    let data = raw;
+    if (method === 8) data = new Uint8Array(await new Response(
+      new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+    else if (method !== 0) throw new Error('zip compression ไม่รองรับ (method ' + method + ')');
+    out[name.toLowerCase().split('/').pop()] = data;
+  }
+  return out;
+}
+
+const toAB = u8 => u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
+
+// เลือก encoding ของ .dbf: อ่าน .cpg ก่อน, ไม่มีก็ลอง utf-8 → ถ้าเพี้ยน (มี U+FFFD) สลับเป็น TIS-620/CP874
+function decodeDbf(dbfU8, cpgU8) {
+  const parse = enc => shp.parseDbf(toAB(dbfU8), enc);
+  const broken = rows => JSON.stringify(rows).includes('�');
+  if (cpgU8) {
+    const label = new TextDecoder().decode(cpgU8).trim().toLowerCase();
+    const enc = /874|620|8859-?11/.test(label) ? 'windows-874'
+              : /utf-?8/.test(label)           ? 'utf-8' : label;
+    try { const rows = parse(enc); if (!broken(rows)) return { rows, encoding: enc }; } catch (e) { /* label ใช้ไม่ได้ — auto ต่อ */ }
+  }
+  const utf = parse('utf-8');
+  if (!broken(utf)) return { rows: utf, encoding: 'utf-8' };
+  const th = parse('windows-874');
+  return broken(th) ? { rows: utf, encoding: 'utf-8 (มีอักขระเพี้ยน)' } : { rows: th, encoding: 'TIS-620/CP874' };
+}
+
+async function handleFile(file) {
+  const status = document.getElementById('status');
+  _generated = null;
+  document.getElementById('dlBtn').disabled = true;
+  status.innerHTML = `กำลังอ่าน <b>${file.name}</b> ...`;
+  try {
+    let features, meta = {};
+    if (/\.zip$/i.test(file.name)) {
+      const files = await unzip(await file.arrayBuffer());
+      const find = ext => { const k = Object.keys(files).find(n => n.endsWith(ext)); return k ? files[k] : null; };
+      const shpU8 = find('.shp'), dbfU8 = find('.dbf'), prjU8 = find('.prj'), cpgU8 = find('.cpg');
+      if (!shpU8) throw new Error('ใน zip ไม่มีไฟล์ .shp');
+      if (!dbfU8) throw new Error('ใน zip ไม่มีไฟล์ .dbf (ตาราง attribute)');
+      meta.prjMissing = !prjU8;
+      const prjText = prjU8 ? new TextDecoder().decode(prjU8) : null;
+      const geoms = shp.parseShp(toAB(shpU8), prjText);   // reproject เป็น WGS84 จาก .prj
+      const dec = decodeDbf(dbfU8, cpgU8);
+      meta.encoding = dec.encoding;
+      features = shp.combine([geoms, dec.rows]).features || [];
+    } else {
+      const gj = JSON.parse(await file.text());
+      features = gj.features || (gj.type === 'Feature' ? [gj] : []);
+    }
+    if (!features.length) { status.innerHTML = '<span class="err">ไม่พบ feature ในไฟล์</span>'; return; }
+    status.innerHTML = `อ่านสำเร็จ — พบ <b>${features.length}</b> feature`;
+    runReport(features, meta);
+  } catch (e) {
+    status.innerHTML = `<span class="err">อ่านไฟล์ไม่ได้: ${e.message}</span>`;
+  }
+}
+
+function runReport(features, meta = {}) {
+  const { problems, dupN, foundKeys } = validateFeatures(features);
+  const bb = bboxOf(features);
+  // เป็นองศาจริงไหม — ถ้าเกิน ±180/±90 คือยังเป็น UTM เมตร (reproject ไม่สำเร็จ)
+  const isDegrees = Math.abs(bb.minLon) <= 180 && Math.abs(bb.maxLon) <= 180 &&
+                    Math.abs(bb.minLat) <= 90  && Math.abs(bb.maxLat) <= 90;
+  const inTH = bb.minLon > 96 && bb.maxLon < 106 && bb.minLat > 5 && bb.maxLat < 21;
+  const rows = [];
+
+  rows.push(row('จำนวนโซน (feature)', features.length, 'ok'));
+  rows.push(row('Field ที่พบในไฟล์', foundKeys.map(k => `<code>${k}</code>`).join(' ') || '—', 'muted'));
+  if (meta.encoding) rows.push(row('การอ่านภาษาไทย (.dbf)', meta.encoding, meta.encoding.includes('เพี้ยน') ? 'warn' : 'ok'));
+
+  if (problems.length === 0) {
+    rows.push(row('✅ Field บังคับครบทุก feature', REQUIRED.join(', '), 'ok'));
+  } else {
+    rows.push(row(`❌ Field ไม่ครบ ${problems.length} feature`, 'ดูรายการด้านล่าง', 'err'));
+  }
+  rows.push(row(dupN.length ? '⚠️ N ซ้ำ' : '✅ N ไม่ซ้ำ', dupN.length ? dupN.join(', ') : 'ทุกค่าไม่ซ้ำ', dupN.length ? 'warn' : 'ok'));
+
+  if (!isDegrees) {
+    rows.push(row('❌ พิกัดยังเป็นเมตร (UTM) — reproject ไม่สำเร็จ',
+      meta.prjMissing ? 'ใน zip ไม่มีไฟล์ <b>.prj</b> — ใส่ .prj แล้ว zip ใหม่' : 'ไฟล์ .prj อ่านไม่ได้/ไม่รองรับ', 'err'));
+  } else {
+    rows.push(row(inTH ? '✅ พิกัดอยู่ในไทย' : '⚠️ พิกัดนอกช่วงไทย?', `lon ${bb.minLon.toFixed(3)}–${bb.maxLon.toFixed(3)} · lat ${bb.minLat.toFixed(3)}–${bb.maxLat.toFixed(3)}`, inTH ? 'ok' : 'warn'));
+  }
+
+  let detail = '';
+  if (problems.length) {
+    detail = `<div class="rep" style="margin-top:12px"><table>
+      <tr><td class="muted">feature #</td><td class="muted">field ที่ขาด</td></tr>
+      ${problems.slice(0, 50).map(p => `<tr><td>${p.i}</td><td class="err">${p.missing.join(', ')}</td></tr>`).join('')}
+    </table>${problems.length > 50 ? `<div class="muted" style="padding:6px">... และอีก ${problems.length - 50}</div>` : ''}</div>`;
+  }
+
+  document.getElementById('report').innerHTML = rows.join('') + detail;
+  document.getElementById('reportCard').style.display = 'block';
+
+  const dlBtn = document.getElementById('dlBtn');
+  const upBtn = document.getElementById('upBtn');
+  const note = document.getElementById('dlNote');
+  document.getElementById('upStatus').innerHTML = '';
+  if (problems.length === 0 && isDegrees) {
+    _geoOut    = buildGeoOut(features);
+    _generated = buildZonesJs(features);
+    dlBtn.disabled = false;
+    upBtn.disabled = false;
+    note.innerHTML = `${features.length} โซน · ~${(new Blob([_generated]).size / 1024).toFixed(0)} KB`;
+  } else {
+    _geoOut = null;
+    dlBtn.disabled = true;
+    upBtn.disabled = true;
+    note.innerHTML = !isDegrees
+      ? '<span class="err">พิกัดยังไม่ใช่ lat/long — ตรวจไฟล์ .prj ใน zip แล้วอัปโหลดใหม่</span>'
+      : '<span class="err">แก้ field ที่ขาดในไฟล์ก่อน แล้วอัปโหลดใหม่</span>';
+  }
+}
+
+function row(label, val, cls) {
+  return `<div class="row"><span>${label}</span><span class="${cls || ''}" style="text-align:right">${val}</span></div>`;
+}
+
+function downloadZones() {
+  if (!_generated) return;
+  const blob = new Blob([_generated], { type: 'text/javascript' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'zones.js';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ---- อัปโหลดโซนเข้า Firestore → Dashboard โหลดใช้เองอัตโนมัติ ----
+// โครง: config/zones = meta {chunks, count, updatedAt} · config/zones_c0..n = ชิ้น JSON (ละ ≤700KB)
+async function uploadZones() {
+  if (!_geoOut) return;
+  const st = document.getElementById('upStatus');
+  const btn = document.getElementById('upBtn');
+  const db = firebase.firestore();
+  if (!firebase.auth().currentUser) { st.innerHTML = '<span class="err">ยังไม่ได้ login — refresh หน้าแล้ว login ใหม่</span>'; return; }
+  btn.disabled = true;
+  try {
+    const json = JSON.stringify(_geoOut);
+    const CH = 700 * 1024;
+    const parts = [];
+    for (let i = 0; i < json.length; i += CH) parts.push(json.slice(i, i + CH));
+
+    // จำนวน chunk ชุดเก่า (ไว้ลบส่วนเกิน)
+    st.innerHTML = 'กำลังอัปโหลด... (0/' + parts.length + ')';
+    const oldMeta = await db.collection('config').doc('zones').get();
+    const oldChunks = oldMeta.exists ? (oldMeta.data().chunks || 0) : 0;
+
+    // เขียน chunk ก่อน meta — คนอ่านจะไม่เจอ meta ที่ชี้ไป chunk ที่ยังไม่มี
+    for (let i = 0; i < parts.length; i++) {
+      await db.collection('config').doc('zones_c' + i).set({ data: parts[i] });
+      st.innerHTML = `กำลังอัปโหลด... (${i + 1}/${parts.length})`;
+    }
+    await db.collection('config').doc('zones').set({
+      chunks: parts.length,
+      count: _geoOut.features.length,
+      updatedAt: new Date().toISOString(),
+      by: firebase.auth().currentUser.email || ''
+    });
+    // ลบ chunk เก่าที่เกินจำนวนใหม่
+    for (let i = parts.length; i < oldChunks; i++) {
+      await db.collection('config').doc('zones_c' + i).delete().catch(() => {});
+    }
+    st.innerHTML = `<span class="ok">✅ อัปโหลดสำเร็จ ${_geoOut.features.length} โซน — เปิด Dashboard แล้วกด รีเฟรช จะใช้โซนชุดนี้ทันที</span>`;
+  } catch (e) {
+    st.innerHTML = '<span class="err">อัปโหลดไม่สำเร็จ: ' + e.message +
+      (e.code === 'permission-denied' ? ' — Firestore rules ไม่อนุญาต (ต้องเพิ่ม rule ให้ collection config)' : '') + '</span>';
+  } finally {
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

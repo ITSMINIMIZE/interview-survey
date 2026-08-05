@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>App Config — API Keys (Admin)</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Sarabun',sans-serif}
+  body{background:linear-gradient(160deg,#0f172a,#1e293b);min-height:100vh;padding:24px;color:#e2e8f0}
+  .card{max-width:620px;margin:0 auto;background:#1e293b;border:1px solid #334155;border-radius:16px;padding:26px;box-shadow:0 8px 40px rgba(0,0,0,.3)}
+  h1{font-size:20px;color:#f1f5f9;margin-bottom:4px}
+  .sub{font-size:13px;color:#94a3b8;margin-bottom:20px;line-height:1.6}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:12px;font-weight:600;color:#cbd5e1;margin-bottom:6px}
+  input{width:100%;padding:11px 13px;border:1.5px solid #334155;border-radius:9px;background:#0f172a;color:#f1f5f9;font:14px 'Sarabun';outline:none}
+  input:focus{border-color:#2563eb}
+  .hint{font-size:11px;color:#64748b;margin-top:4px}
+  .btn{padding:11px 18px;border:none;border-radius:9px;font:600 14px 'Sarabun';cursor:pointer;transition:all .15s}
+  .btn-go{background:#2563eb;color:#fff}.btn-go:hover{background:#1d4ed8}
+  .btn-go:disabled{background:#475569;cursor:not-allowed}
+  .btn-ghost{background:#334155;color:#cbd5e1}
+  .row{display:flex;gap:10px;align-items:flex-end}
+  .row .field{flex:1;margin-bottom:0}
+  .box{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:14px;margin-bottom:18px;font-size:13px;line-height:1.7}
+  .box b{color:#f1f5f9}
+  .who{font-size:12px;color:#34d399}
+  .msg{font-size:13px;min-height:18px;margin-top:10px}
+  .msg.ok{color:#34d399}.msg.err{color:#f87171}.msg.info{color:#60a5fa}
+  .divider{height:1px;background:#334155;margin:20px 0}
+  .locked{opacity:.5;pointer-events:none}
+  code{background:#0f172a;padding:1px 6px;border-radius:5px;color:#fbbf24;font-size:12px}
+</style>
+<script src="auth-gate.js"></script>
+</head>
+<body>
+<div class="card">
+  <a href="index.html" style="display:inline-block;margin-bottom:14px;color:#94a3b8;text-decoration:none;font-size:14px;font-weight:600;">← กลับไปหน้าเครื่องมือ</a>
+  <h1>🔑 App Config — API Keys</h1>
+  <div class="sub">จัดการ API key ที่ใช้ทั้ง Roadside + Home (เก็บใน Firestore <code>config/app</code>) — แก้ที่นี่ที่เดียว ทุกเครื่องได้ค่าใหม่โดยไม่ต้องแก้โค้ด</div>
+
+  <!-- LOGIN -->
+  <div id="loginBox">
+    <div class="box">เข้าสู่ระบบด้วยบัญชี <b>admin</b> ก่อน จึงจะแก้ key ได้ (อ่านได้โดยไม่ต้อง login)</div>
+    <div class="row">
+      <div class="field"><label>Username (admin)</label><input id="u" type="text" autocomplete="username" placeholder="เช่น admin" /></div>
+      <div class="field"><label>Password</label><input id="p" type="password" autocomplete="current-password" /></div>
+      <button class="btn btn-go" id="loginBtn" onclick="doLogin()">เข้าสู่ระบบ</button>
+    </div>
+    <div class="msg" id="loginMsg"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- KEYS -->
+  <div id="keyBox" class="locked">
+    <div class="who" id="who">⚠ ยังไม่ได้ login — ดูได้อย่างเดียว</div>
+    <div style="height:12px"></div>
+    <div class="field">
+      <label>Google Places API key (New)</label>
+      <input id="gk" type="text" placeholder="(ว่าง = ใช้ค่า default ในโค้ด)" />
+      <div class="hint">ต้องเปิด “Places API (New)” + จำกัด HTTP referrer ใน Google Cloud</div>
+    </div>
+    <div class="field">
+      <label>Longdo Maps API key</label>
+      <input id="lk" type="text" placeholder="(ว่าง = ใช้ค่า default ในโค้ด)" />
+    </div>
+    <button class="btn btn-go" id="saveBtn" onclick="doSave()" disabled>💾 บันทึก key</button>
+    <button class="btn btn-ghost" onclick="loadConfig()">↻ โหลดค่าล่าสุด</button>
+    <div class="msg" id="saveMsg"></div>
+  </div>
+
+  <div class="box" style="margin-top:18px;color:#94a3b8;">
+    หมายเหตุ: key ใหม่จะมีผล<b>ครั้งถัดไปที่ surveyor เปิดแผนที่</b> (เกือบทันที เมื่อมีเน็ต) · ออฟไลน์ใช้ค่าที่แคชล่าสุด · ปล่อยช่องว่าง = ใช้ key ที่ฝังในโค้ด (fallback)
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+const cfg = {
+  apiKey:'PASTE_API_KEY',
+  authDomain:'PASTE_PROJECT_ID.firebaseapp.com',
+  projectId:'PASTE_PROJECT_ID',
+  storageBucket:'PASTE_PROJECT_ID.firebasestorage.app',
+  messagingSenderId:'PASTE_SENDER_ID',
+  appId:'PASTE_APP_ID'
+};
+if (!firebase.apps.length) firebase.initializeApp(cfg);
+const db = firebase.firestore();
+const auth = firebase.auth();
+const EMAIL_DOMAIN = '@interview-survey.local';
+
+const $ = id => document.getElementById(id);
+function msg(el, text, cls){ el.className = 'msg ' + (cls||'info'); el.textContent = text; }
+
+// ---- read config (public) ----
+async function loadConfig(){
+  try {
+    const doc = await db.collection('config').doc('app').get();
+    const c = doc.exists ? doc.data() : {};
+    $('gk').value = c.google_places_key || '';
+    $('lk').value = c.longdo_key || '';
+    msg($('saveMsg'), doc.exists
+      ? `ค่าปัจจุบันใน DB${c.updated_by ? ' · แก้ล่าสุดโดย '+c.updated_by : ''}`
+      : 'ยังไม่เคยตั้งค่าใน DB (แอปใช้ key ในโค้ด)', 'info');
+  } catch(e){ msg($('saveMsg'), 'อ่าน config ไม่สำเร็จ: '+e.message, 'err'); }
+}
+
+// ---- login ----
+async function doLogin(){
+  const u = $('u').value.trim(), p = $('p').value;
+  if (!u || !p){ msg($('loginMsg'),'กรอก username + password','err'); return; }
+  $('loginBtn').disabled = true;
+  msg($('loginMsg'),'กำลังเข้าสู่ระบบ...','info');
+  try {
+    const email = u.toLowerCase().replace(/\s+/g,'') + EMAIL_DOMAIN;
+    await auth.signInWithEmailAndPassword(email, p);
+  } catch(e){
+    msg($('loginMsg'),'เข้าสู่ระบบไม่สำเร็จ: '+e.message,'err');
+    $('loginBtn').disabled = false;
+  }
+}
+
+// ---- save (requires auth) ----
+async function doSave(){
+  if (!auth.currentUser){ msg($('saveMsg'),'ต้อง login admin ก่อน','err'); return; }
+  $('saveBtn').disabled = true;
+  msg($('saveMsg'),'กำลังบันทึก...','info');
+  try {
+    await db.collection('config').doc('app').set({
+      google_places_key: $('gk').value.trim(),
+      longdo_key:        $('lk').value.trim(),
+      updated_at:        new Date().toISOString(),
+      updated_by:        auth.currentUser.email.replace(EMAIL_DOMAIN,'')
+    }, { merge: true });
+    msg($('saveMsg'),'✓ บันทึกแล้ว — มีผลในแอปภายใน ~30 นาที (หรือเปิดแอปใหม่)','ok');
+  } catch(e){ msg($('saveMsg'),'บันทึกไม่สำเร็จ: '+e.message,'err'); }
+  $('saveBtn').disabled = false;
+}
+
+// ---- auth state → lock/unlock ----
+auth.onAuthStateChanged(user => {
+  const keyBox = $('keyBox'), who = $('who'), loginBox = $('loginBox');
+  if (user){
+    const name = user.email.replace(EMAIL_DOMAIN,'');
+    keyBox.classList.remove('locked');
+    who.style.color = '#34d399';
+    who.innerHTML = `🔓 login เป็น <b>${name}</b> — แก้ key ได้ · <a href="#" onclick="auth.signOut();return false" style="color:#60a5fa">ออกจากระบบ</a>`;
+    $('saveBtn').disabled = false;
+    loginBox.style.display = 'none';
+  } else {
+    keyBox.classList.add('locked');
+    who.style.color = '#fbbf24';
+    who.textContent = '⚠ ยังไม่ได้ login — ดูได้อย่างเดียว';
+    $('saveBtn').disabled = true;
+    loginBox.style.display = '';
+    $('loginBtn').disabled = false;
+  }
+});
+
+loadConfig();
+</script>
+</body>
+</html>

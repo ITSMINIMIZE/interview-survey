@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — บ้านไผ่ Survey</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #0f172a;
+      --surface: #1e293b;
+      --border:  #334155;
+      --text:    #f1f5f9;
+      --muted:   #94a3b8;
+      --accent:  #3b82f6;
+      --accent2: #2563eb;
+      --danger:  #ef4444;
+      --success: #22c55e;
+      --warn:    #f59e0b;
+    }
+    body { font-family: 'Sarabun', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 44px; }
+
+    /* ── Login ── */
+    #loginOverlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: var(--bg); display: flex; align-items: center; justify-content: center;
+    }
+    .login-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 40px; width: 360px; max-width: 90vw;
+    }
+    .login-box h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .login-box .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+    .form-group input {
+      width: 100%; padding: 10px 14px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 14px; font-family: inherit;
+      transition: border-color .15s;
+    }
+    .form-group input:focus { outline: none; border-color: var(--accent); }
+    .btn-primary {
+      width: 100%; padding: 12px; background: var(--accent); color: #fff;
+      border: none; border-radius: 8px; font-size: 15px; font-weight: 600;
+      font-family: inherit; cursor: pointer; margin-top: 8px; transition: background .15s;
+    }
+    .btn-primary:hover { background: var(--accent2); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    #loginError { color: var(--danger); font-size: 13px; margin-top: 10px; display: none; }
+
+    /* ── Loading ── */
+    #loadingOverlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(15,23,42,.9);
+      display: none; align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+    }
+    #loadingOverlay.show { display: flex; }
+    .spinner {
+      width: 40px; height: 40px; border: 3px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Main ── */
+    #dashboardMain { display: none; }
+
+    /* Header */
+    .dash-header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 24px; height: 54px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .dash-logo { font-weight: 700; font-size: 15px; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    #headerUser { font-size: 13px; color: var(--muted); }
+    .btn-sm {
+      padding: 6px 14px; font-size: 12px; font-weight: 600;
+      border-radius: 6px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); cursor: pointer; font-family: inherit;
+      transition: all .15s;
+    }
+    .btn-sm:hover { color: var(--text); border-color: var(--muted); }
+
+    /* KPI Bar — แยก 2 ฝั่ง (ซ้าย Road / ขวา Home) */
+    .kpi-bar { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); }
+    .kpi-side { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .kpi-side + .kpi-side { border-left: 3px solid var(--border); }
+    .kpi-side-label { font-size: 11px; font-weight: 800; letter-spacing: .05em; color: var(--muted); padding: 8px 20px 0; }
+    .kpi-side-cards { display: flex; }
+    .kpi-card { flex: 1; padding: 10px 20px 14px; border-right: 1px solid var(--border); min-width: 0; }
+    .kpi-side-cards .kpi-card:last-child { border-right: none; }
+    .kpi-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+    .kpi-value { font-size: 26px; font-weight: 700; margin-top: 2px; line-height: 1.1; }
+    .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    @media (max-width: 900px) {
+      .kpi-bar { flex-direction: column; }
+      .kpi-side + .kpi-side { border-left: none; border-top: 3px solid var(--border); }
+    }
+
+    /* Tab bar */
+    .tab-bar {
+      display: flex; background: var(--surface);
+      border-bottom: 1px solid var(--border); padding: 0 20px;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 14px 18px; font-size: 13px; font-weight: 600;
+      color: var(--muted); border: none; background: transparent;
+      border-bottom: 2px solid transparent; cursor: pointer;
+      font-family: inherit; white-space: nowrap; margin-bottom: -1px;
+      transition: color .15s, border-color .15s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* Panels */
+    .tab-panel { display: none; padding: 24px; }
+    .tab-panel.active { display: block; }
+
+    /* Cards */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .card-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .badge {
+      background: var(--bg); color: var(--muted);
+      font-size: 11px; padding: 2px 10px; border-radius: 10px; font-weight: 600;
+    }
+
+    /* Grids */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    @media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+    /* Tables */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table th {
+      text-align: left; padding: 8px 12px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+      color: var(--muted); border-bottom: 1px solid var(--border);
+    }
+    .data-table td { padding: 8px 12px; border-bottom: 1px solid rgba(51,65,85,.4); vertical-align: middle; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: rgba(30,41,59,.6); }
+
+    /* OD Matrix */
+    .od-scroll { overflow-x: auto; max-height: 520px; overflow-y: auto; }
+    .od-table { border-collapse: collapse; font-size: 11px; }
+    .od-table th, .od-table td { padding: 5px 8px; white-space: nowrap; border: 1px solid var(--border); }
+    .od-table th { background: var(--bg); font-weight: 700; color: var(--muted); position: sticky; top: 0; z-index: 1; }
+    .od-table td { text-align: right; }
+    .od-cell-0 { color: var(--border); }
+    .od-cell-low  { background: rgba(59,130,246,.12); }
+    .od-cell-mid  { background: rgba(59,130,246,.35); }
+    .od-cell-high { background: rgba(59,130,246,.65); color: #fff; font-weight: 700; }
+    .od-row-header { text-align: left !important; font-weight: 600; color: var(--muted); background: var(--bg); position: sticky; left: 0; z-index: 2; }
+
+    /* Toggle buttons */
+    .toggle-group { display: flex; gap: 4px; flex-wrap: wrap; }
+    .toggle-btn {
+      padding: 6px 14px; font-size: 12px; font-weight: 600;
+      border-radius: 6px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); cursor: pointer; font-family: inherit;
+      transition: all .15s;
+    }
+    .toggle-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .toggle-btn:hover:not(.active) { color: var(--text); border-color: var(--muted); }
+
+    /* Map */
+    #leafletMap { height: 480px; border-radius: 8px; }
+
+    /* Map fullscreen (toggle ด้วยปุ่ม ⛶ / Esc) */
+    #mapCard.map-fs {
+      position: fixed; inset: 0; z-index: 2000;
+      margin: 0; border-radius: 0; border: none;
+      display: flex; flex-direction: column;
+    }
+    #mapCard.map-fs .map-panel-header { flex-shrink: 0; }
+    #mapCard.map-fs #mapBody { flex: 1; min-height: 0; }
+    #mapCard.map-fs #mapCol  { display: flex; flex-direction: column; min-height: 0; }
+    #mapCard.map-fs #leafletMap { flex: 1; height: auto; min-height: 0; }
+    .zone-poly { cursor: pointer; }
+    .zone-tooltip { font-family: 'Sarabun', sans-serif; font-size: 12px; }
+    .map-controls {
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    }
+    .map-controls-label { font-size: 13px; font-weight: 700; }
+    .map-controls-sep { color: var(--border); margin: 0 4px; }
+
+    /* Charts */
+    .chart-wrap canvas { max-height: 300px; }
+
+    /* Chips */
+    .chip { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+    .chip-ok   { background: rgba(34,197,94,.15);  color: var(--success); }
+    .chip-warn { background: rgba(245,158,11,.15); color: var(--warn); }
+    .chip-err  { background: rgba(239,68,68,.15);  color: var(--danger); }
+
+    /* Status bar */
+    #statusBar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--surface); border-top: 1px solid var(--border);
+      padding: 8px 24px; font-size: 12px; color: var(--muted);
+      display: flex; align-items: center; justify-content: space-between;
+      z-index: 100;
+    }
+    .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+    .dot-live { background: var(--success); }
+    .dot-off  { background: var(--danger); }
+
+    /* Map panel header */
+    .map-panel-header {
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Login ── -->
+<div id="loginOverlay">
+  <div class="login-box">
+    <div style="font-size:40px;margin-bottom:14px">📊</div>
+    <h1>Survey Dashboard</h1>
+    <p class="subtitle">โครงการสำรวจการเดินทาง — ผังเมืองรวมบ้านไผ่<br>ผู้ดูแล = เห็นข้อมูลทั้งหมด · ผู้ควบคุม = เห็นเฉพาะทีมตัวเอง</p>
+    <div class="form-group">
+      <label>ชื่อผู้ใช้ หรือ อีเมล</label>
+      <input type="text" id="loginUsername" placeholder="ผู้ดูแล: ชื่อผู้ใช้ · ผู้ควบคุม: อีเมล" autocomplete="username" />
+    </div>
+    <div class="form-group">
+      <label>รหัสผ่าน</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password" />
+    </div>
+    <button class="btn-primary" id="loginBtn" onclick="App.login()">เข้าสู่ระบบ</button>
+    <div id="loginError"></div>
+    <div style="text-align:center;margin-top:14px">
+      <a href="#" onclick="App.forgotPassword();return false"
+         style="color:var(--muted);font-size:12px;text-decoration:none">ลืมรหัสผ่าน?</a>
+    </div>
+    <a href="../index.html" style="display:inline-block;margin-top:18px;color:var(--muted);font-size:13px;text-decoration:none;">🏠 กลับเมนูหลัก</a>
+  </div>
+</div>
+
+<!-- ── Loading ── -->
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <div id="loadingMsg" style="color:var(--muted);font-size:14px">กำลังโหลดข้อมูล...</div>
+</div>
+
+<!-- ── Dashboard ── -->
+<div id="dashboardMain">
+
+  <!-- Header -->
+  <div class="dash-header">
+    <div class="dash-logo">📊 บ้านไผ่ Survey Dashboard</div>
+    <div class="header-right">
+      <span id="headerUser"></span>
+      <button class="btn-sm" onclick="location.href='../index.html'">🏠 เมนูหลัก</button>
+      <button class="btn-sm" onclick="App.refresh()">🔄 รีเฟรช</button>
+      <button class="btn-sm" onclick="App.changePassword()">🔑 เปลี่ยนรหัสผ่าน</button>
+      <button class="btn-sm" onclick="App.logout()">ออกจากระบบ</button>
+    </div>
+  </div>
+
+  <!-- KPI Bar — แยก 2 ฝั่ง: ซ้าย Road · ขวา Home -->
+  <div class="kpi-bar">
+    <div class="kpi-side">
+      <div class="kpi-side-label">🚗 ฝั่ง Road</div>
+      <div class="kpi-side-cards">
+        <div class="kpi-card">
+          <div class="kpi-label">รถที่สำรวจได้</div>
+          <div class="kpi-value" id="kpiIV">—</div>
+          <div class="kpi-sub">Roadside · คัน</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">คนในรถรวม</div>
+          <div class="kpi-value" id="kpiRoadPax">—</div>
+          <div class="kpi-sub">ผู้โดยสารรวม (รวมคนขับ)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">คนต่อคัน</div>
+          <div class="kpi-value" id="kpiRoadOcc">—</div>
+          <div class="kpi-sub">occupancy · คน/คัน</div>
+        </div>
+      </div>
+    </div>
+    <div class="kpi-side">
+      <div class="kpi-side-label">🏠 ฝั่ง Home</div>
+      <div class="kpi-side-cards">
+        <div class="kpi-card">
+          <div class="kpi-label">บ้านที่สำรวจได้</div>
+          <div class="kpi-value" id="kpiHH">—</div>
+          <div class="kpi-sub">Home · หลัง</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">คนที่สำรวจได้</div>
+          <div class="kpi-value" id="kpiMembers">—</div>
+          <div class="kpi-sub">สมาชิกรวม</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Trip rate</div>
+          <div class="kpi-value" id="kpiTripRate">—</div>
+          <div class="kpi-sub">เที่ยว/คน</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="App.switchTab('progress')">🗂 ติดตามงาน</button>
+    <button class="tab-btn" onclick="App.switchTab('od')">📋 OD Matrix</button>
+    <button class="tab-btn" onclick="App.switchTab('map')">🗺 แผนที่</button>
+    <button class="tab-btn" onclick="App.switchTab('peak')">⏰ Peak Hour</button>
+    <button class="tab-btn" onclick="App.switchTab('stats')">📈 สถิติ</button>
+  </div>
+
+  <!-- ── Tab: ติดตามงาน ── (ซ้าย: Road · ขวา: Home) -->
+  <div class="tab-panel active" id="panel-progress">
+    <div class="grid-2">
+      <!-- ซ้าย: Roadside -->
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div class="card">
+          <div class="card-title">🚗 Road — รถที่สำรวจแยกตามจุด <span class="badge" id="badgeRoadsideStation"></span></div>
+          <div class="chart-wrap"><canvas id="chartRoadByStation"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 สรุปตามจุดสำรวจ</div>
+          <div id="roadsideStationTable"><p style="color:var(--muted)">กำลังโหลด...</p></div>
+        </div>
+      </div>
+      <!-- ขวา: Home -->
+      <div style="display:flex;flex-direction:column;gap:20px" id="cardHomeSupervisor">
+        <div class="card">
+          <div class="card-title">🏠 Home — บ้านที่สำรวจแยกตามผู้ควบคุม <span class="badge" id="badgeHomeSurveyor"></span></div>
+          <div class="chart-wrap"><canvas id="chartHomeBySupervisor"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 สรุปตามผู้ควบคุม (ทีม)</div>
+          <div id="homeSurveyorTable"><p style="color:var(--muted)">กำลังโหลด...</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <!-- ซ้าย: ผู้สำรวจ Road -->
+      <div class="card">
+        <div class="card-title">👤 สรุปรายผู้สำรวจ — Road <span class="badge" id="badgeRoadSurv"></span></div>
+        <input type="text" id="roadSurvSearch" oninput="App.filterTable('roadPersonTable', this.value)" placeholder="🔍 ค้นหาชื่อผู้สำรวจ / ผู้ควบคุม..."
+          style="width:100%;margin-bottom:12px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;" />
+        <div style="overflow-x:auto"><div id="roadPersonTable"><p style="color:var(--muted)">กำลังโหลด...</p></div></div>
+      </div>
+      <!-- ขวา: ผู้สำรวจ Home -->
+      <div class="card">
+        <div class="card-title">👤 สรุปรายผู้สำรวจ — Home <span class="badge" id="badgeHomeSurv"></span></div>
+        <input type="text" id="homeSurvSearch" oninput="App.filterTable('homePersonTable', this.value)" placeholder="🔍 ค้นหาชื่อผู้สำรวจ / ผู้ควบคุม..."
+          style="width:100%;margin-bottom:12px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;" />
+        <div style="overflow-x:auto"><div id="homePersonTable"><p style="color:var(--muted)">กำลังโหลด...</p></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">⚠️ ข้อมูลที่ไม่ครบ (Home) <span class="badge" id="badgeIncomplete"></span></div>
+      <div id="incompleteTable"><p style="color:var(--muted)">กำลังตรวจสอบ...</p></div>
+    </div>
+  </div>
+
+  <!-- ── Tab: OD Matrix ── -->
+  <div class="tab-panel" id="panel-od">
+    <div class="card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:var(--muted)">แหล่งข้อมูล:</span>
+        <div class="toggle-group">
+          <button class="toggle-btn active" id="odToggleHome" onclick="App.setODSource('home')">🏠 Home</button>
+          <button class="toggle-btn" id="odToggleRoadside" onclick="App.setODSource('roadside')">🚗 Roadside</button>
+          <button class="toggle-btn" id="odToggleAll" onclick="App.setODSource('all')">📊 ทั้งหมด</button>
+        </div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">สรุปประเภทการเดินทาง</div>
+        <div id="odSummary"><p style="color:var(--muted)">กำลังคำนวณ...</p></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Top 10 คู่ต้นทาง–ปลายทาง</div>
+        <div id="odTop10"><p style="color:var(--muted)">กำลังคำนวณ...</p></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">OD Matrix ระดับโซน/ตำบล</div>
+      <div class="od-scroll" id="odMatrixWrap"><p style="color:var(--muted)">กำลังสร้าง matrix...</p></div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Map ── -->
+  <div class="tab-panel" id="panel-map">
+    <div class="card" id="mapCard" style="padding:0;overflow:hidden">
+      <div class="map-panel-header">
+        <span style="font-size:14px;font-weight:700">แผนที่การเดินทาง</span>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div class="toggle-group">
+            <button class="toggle-btn active" id="mapToggleDesire" onclick="App.setMapMode('desire')">📍 Desire Lines</button>
+            <button class="toggle-btn" id="mapToggleChoropleth" onclick="App.setMapMode('choropleth')">🎨 Choropleth</button>
+            <button class="toggle-btn" id="mapToggleRaw" onclick="App.setMapMode('raw')">📌 พิกัดจริง</button>
+          </div>
+          <span class="map-controls-sep">|</span>
+          <div class="toggle-group">
+            <button class="toggle-btn active" id="mapSrcHome" onclick="App.setMapSource('home')">🏠 Home</button>
+            <button class="toggle-btn" id="mapSrcRoadside" onclick="App.setMapSource('roadside')">🚗 Roadside</button>
+            <button class="toggle-btn" id="mapSrcAll" onclick="App.setMapSource('all')">📊 ทั้งหมด</button>
+          </div>
+          <button class="toggle-btn" id="mapFsBtn" onclick="App.toggleMapFullscreen()" title="ขยายเต็มจอ / ย่อ (Esc)">⛶ เต็มจอ</button>
+        </div>
+      </div>
+      <div id="mapBody" style="display:flex;gap:0">
+        <!-- Map -->
+        <div id="mapCol" style="flex:1;min-width:0;padding:16px">
+          <div id="leafletMap"></div>
+        </div>
+        <!-- Zone info panel -->
+        <div id="mapZonePanel" style="width:280px;flex-shrink:0;border-left:1px solid var(--border);display:flex;flex-direction:column">
+          <!-- Search box (always visible) -->
+          <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
+            <div style="position:relative">
+              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none">🔍</span>
+              <input id="zoneSearchInput" type="text" placeholder="ค้นหาโซน..." autocomplete="off"
+                oninput="App.filterZoneSearch(this.value)"
+                style="width:100%;padding:8px 10px 8px 32px;background:var(--bg);border:1px solid var(--border);
+                       border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;outline:none;" />
+            </div>
+            <!-- Search results dropdown -->
+            <div id="zoneSearchResults" style="display:none;margin-top:6px;max-height:160px;overflow-y:auto;
+                 background:var(--bg);border:1px solid var(--border);border-radius:8px"></div>
+          </div>
+          <!-- Zone detail (shown after selection) -->
+          <div id="mapZoneDetail" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+            <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:13px;font-weight:700" id="mapZoneName">—</span>
+              <button onclick="App.clearZoneSelect()" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:3px 8px;cursor:pointer">✕ ล้าง</button>
+            </div>
+            <div style="padding:14px;overflow-y:auto;flex:1">
+              <div style="margin-bottom:16px">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#f59e0b;margin-bottom:8px">🟠 ออกจากโซนนี้ไป</div>
+                <div id="mapZoneOut"></div>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#22c55e;margin-bottom:8px">🟢 เข้ามาจาก</div>
+                <div id="mapZoneIn"></div>
+              </div>
+            </div>
+          </div>
+          <!-- Empty state -->
+          <div id="mapZoneEmpty" style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center">
+            <p style="color:var(--muted);font-size:12px;line-height:1.6">คลิกโซนบนแผนที่<br>หรือค้นหาชื่อโซน<br>เพื่อดูการเดินทาง</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Peak Hour ── -->
+  <div class="tab-panel" id="panel-peak">
+    <div class="card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:var(--muted)">แหล่งข้อมูล:</span>
+        <div class="toggle-group">
+          <button class="toggle-btn active" id="peakToggleHome" onclick="App.setPeakSource('home')">🏠 Home (departureTime)</button>
+          <button class="toggle-btn" id="peakToggleRoadside" onclick="App.setPeakSource('roadside')">🚗 Roadside (interviewTime)</button>
+          <button class="toggle-btn" id="peakToggleAll" onclick="App.setPeakSource('all')">📊 ทั้งหมด</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">จำนวนเที่ยวรายชั่วโมง (0–23 น.)</div>
+      <div class="chart-wrap" style="position:relative"><canvas id="chartPeak" style="max-height:280px"></canvas></div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">⬆ Peak Hour เช้า</div>
+        <div id="peakAMSummary"><p style="color:var(--muted)">กำลังคำนวณ...</p></div>
+      </div>
+      <div class="card">
+        <div class="card-title">⬇ Peak Hour เย็น</div>
+        <div id="peakPMSummary"><p style="color:var(--muted)">กำลังคำนวณ...</p></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 Trip Rate (เที่ยว/คน/วัน)</div>
+      <div id="tripRateTable"><p style="color:var(--muted)">กำลังคำนวณ...</p></div>
+    </div>
+  </div>
+
+  <!-- ── Tab: สถิติ ── -->
+  <div class="tab-panel" id="panel-stats">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🚌 Modal Split (Home — ยานพาหนะที่ใช้)</div>
+        <div class="chart-wrap"><canvas id="chartModalSplit"></canvas></div>
+        <div id="chartModalSplitMsg"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🚛 ประเภทยานพาหนะ (Roadside)</div>
+        <div class="chart-wrap"><canvas id="chartVehicleType"></canvas></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🎯 วัตถุประสงค์การเดินทาง (Home)</div>
+        <div class="chart-wrap"><canvas id="chartPurposeHome"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🎯 วัตถุประสงค์ (Roadside)</div>
+        <div class="chart-wrap"><canvas id="chartPurposeRoadside"></canvas></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">👥 Pyramid ประชากร (อายุ–เพศ)</div>
+        <div class="chart-wrap"><canvas id="chartPyramid"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">💰 รายได้ครัวเรือน (บาท/เดือน)</div>
+        <div class="chart-wrap"><canvas id="chartIncome"></canvas></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🎓 ระดับการศึกษา (สมาชิก)</div>
+        <div class="chart-wrap"><canvas id="chartEducation"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📦 สินค้าขนส่ง (Roadside — รถบรรทุก)</div>
+        <div id="cargoTable"><p style="color:var(--muted)">กำลังโหลด...</p></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /dashboardMain -->
+
+<!-- Status Bar -->
+<div id="statusBar">
+  <div>
+    <span class="dot dot-off" id="statusDot"></span>
+    <span id="statusText">กำลังเชื่อมต่อ...</span>
+  </div>
+  <div id="statusRight" style="color:var(--muted);font-size:11px"></div>
+</div>
+
+<script>
+  document.addEventListener('click', e => {
+    const inp = document.getElementById('zoneSearchInput');
+    const res = document.getElementById('zoneSearchResults');
+    if (res && inp && !inp.contains(e.target) && !res.contains(e.target))
+      res.style.display = 'none';
+  });
+</script>
+<!-- Firebase v8 compat -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<!-- Leaflet -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Zone GeoJSON (defines ZONES_GEOJSON) -->
+<script src="js/zones.js"></script>
+<!-- Dashboard logic -->
+<script src="js/dashboard.js?v=round1"></script>
+</body>
+</html>

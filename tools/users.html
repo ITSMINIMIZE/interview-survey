@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>จัดการบัญชีผู้ใช้ (Admin)</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Sarabun',sans-serif}
+  body{background:linear-gradient(160deg,#0f172a,#1e293b);min-height:100vh;padding:24px;color:#e2e8f0}
+  .wrap{max-width:900px;margin:0 auto}
+  .card{background:#1e293b;border:1px solid #334155;border-radius:16px;padding:24px;margin-bottom:18px;box-shadow:0 8px 40px rgba(0,0,0,.3)}
+  h1{font-size:20px;color:#f1f5f9;margin-bottom:4px}
+  h2{font-size:15px;color:#f1f5f9;margin-bottom:14px}
+  .sub{font-size:13px;color:#94a3b8;margin-bottom:20px;line-height:1.6}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;font-weight:600;color:#cbd5e1;margin-bottom:6px}
+  input,select{width:100%;padding:11px 13px;border:1.5px solid #334155;border-radius:9px;background:#0f172a;color:#f1f5f9;font:14px 'Sarabun';outline:none}
+  input:focus,select:focus{border-color:#2563eb}
+  .hint{font-size:11px;color:#64748b;margin-top:4px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:640px){.grid2{grid-template-columns:1fr}}
+  .btn{padding:11px 18px;border:none;border-radius:9px;font:600 14px 'Sarabun';cursor:pointer;transition:all .15s}
+  .btn-go{background:#2563eb;color:#fff}.btn-go:hover{background:#1d4ed8}
+  .btn-go:disabled{background:#475569;cursor:not-allowed}
+  .btn-ghost{background:#334155;color:#cbd5e1}
+  .btn-sm{padding:6px 12px;font-size:12px;border-radius:7px}
+  .btn-warn{background:#b45309;color:#fff}
+  .msg{font-size:13px;min-height:18px;margin-top:10px;line-height:1.6}
+  .msg.ok{color:#34d399}.msg.err{color:#f87171}.msg.info{color:#60a5fa}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:9px 10px;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid #334155}
+  td{padding:10px;border-bottom:1px solid #33415580;vertical-align:middle}
+  tr.off td{opacity:.45}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700}
+  .pill-admin{background:rgba(239,68,68,.16);color:#fca5a5}
+  .pill-staff{background:rgba(59,130,246,.16);color:#93c5fd}
+  .pill-off{background:#334155;color:#94a3b8}
+  .box{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:14px;font-size:13px;line-height:1.7;color:#94a3b8}
+  .box b{color:#f1f5f9}
+  code{background:#0f172a;padding:1px 6px;border-radius:5px;color:#fbbf24;font-size:12px;word-break:break-all}
+  .banner{background:rgba(180,83,9,.18);border:1px solid #b45309;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.6}
+  .warnbox{background:rgba(239,68,68,.08);border:1px solid #7f1d1d;border-radius:10px;padding:12px;font-size:12px;color:#fca5a5;line-height:1.6;margin-top:14px}
+  a{color:#60a5fa}
+  .modal{position:fixed;inset:0;z-index:9000;background:rgba(15,23,42,.85);display:none;
+         align-items:center;justify-content:center;padding:20px}
+  .modal .card{max-width:520px;width:100%;margin:0}
+</style>
+<script>window._AUTH_GATE_ALLOW_BOOTSTRAP = true;</script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="auth-gate.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <a href="index.html" style="display:inline-block;margin-bottom:14px;color:#94a3b8;text-decoration:none;font-size:14px;font-weight:600;">← กลับไปหน้าเครื่องมือ</a>
+
+  <div class="card">
+    <h1>👥 จัดการบัญชีผู้ใช้</h1>
+    <div class="sub">
+      สร้างและจัดการบัญชี <b>admin</b> (ผู้ดูแลระบบ — ทำได้ทุกอย่าง) และ <b>staff</b> (ผู้ควบคุม — สร้างจุดสำรวจ + ดู Dashboard เฉพาะทีมตัวเอง)<br>
+      ผู้สำรวจไม่ต้องมีบัญชี ใช้วิธีพิมพ์ชื่อเหมือนเดิม
+    </div>
+    <div id="meBox" class="box">กำลังโหลด...</div>
+  </div>
+
+  <div id="pendingBanner" class="banner" style="display:none"></div>
+
+  <!-- สร้างบัญชี -->
+  <div class="card">
+    <h2>➕ สร้างบัญชีใหม่</h2>
+    <div class="grid2">
+      <div class="field">
+        <label>ระดับบัญชี</label>
+        <select id="c_role" onchange="onRoleChange()">
+          <option value="staff">staff — ผู้ควบคุม</option>
+          <option value="admin">admin — ผู้ดูแลระบบ</option>
+        </select>
+      </div>
+      <div class="field">
+        <label id="c_idLabel">อีเมล (ใช้ login + กู้รหัสผ่าน)</label>
+        <input id="c_email" type="text" autocomplete="off" placeholder="เช่น somchai@gmail.com" />
+        <div class="hint" id="c_idHint">ต้องเป็นอีเมลจริงที่เปิดอ่านได้ — ใช้ตอนลืมรหัสผ่าน</div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>ชื่อ-นามสกุล (ชื่อผู้ควบคุม)</label>
+        <input id="c_name" type="text" autocomplete="off" placeholder="เช่น สมชาย ใจดี" />
+        <div class="hint">ชื่อนี้จะไปอยู่ในตัวเลือก "ผู้ควบคุม" ของแบบสอบถาม และใช้จับคู่ข้อมูลทีม</div>
+      </div>
+      <div class="field">
+        <label>หมายเหตุ (ไม่บังคับ)</label>
+        <input id="c_note" type="text" autocomplete="off" placeholder="เช่น เบอร์โทร / ทีม 2" />
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>รหัสผ่าน (อย่างน้อย 8 ตัว)</label>
+        <input id="c_pw" type="text" autocomplete="new-password" placeholder="ตั้งรหัสแล้วแจ้งเจ้าตัว" />
+      </div>
+      <div class="field">
+        <label>ยืนยันรหัสผ่าน</label>
+        <input id="c_pw2" type="text" autocomplete="new-password" />
+      </div>
+    </div>
+    <button class="btn btn-go" id="createBtn" onclick="doCreate()">➕ สร้างบัญชี</button>
+    <div class="msg" id="createMsg"></div>
+    <div class="warnbox">
+      ⚠️ <b>ตั้งรหัสผ่านให้คนอื่นย้อนหลังไม่ได้</b> — ลืมรหัสต้องให้เจ้าตัวกด "ลืมรหัสผ่าน" ที่หน้า Dashboard
+      (ใช้ได้เฉพาะบัญชีที่เป็นอีเมลจริง · บัญชี <code>@interview-survey.local</code> ส่งเมลไม่ได้ ต้องลบแล้วสร้างใหม่)<br>
+      💡 แนะนำให้ทุกบัญชีใช้<b>อีเมลจริง</b> รวมทั้ง admin
+    </div>
+  </div>
+
+  <!-- รายชื่อ -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">📋 บัญชีทั้งหมด <span id="cnt" style="color:#64748b;font-weight:400"></span></h2>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="loadUsers()">↻ โหลดใหม่</button>
+        <button class="btn btn-ghost btn-sm" onclick="rebuildSupervisors()">🔄 อัปเดตรายชื่อผู้ควบคุมในแอป</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto"><table id="tbl"><tbody><tr><td>กำลังโหลด...</td></tr></tbody></table></div>
+    <div class="msg" id="listMsg"></div>
+  </div>
+
+  <!-- หน้าต่างแก้ไขบัญชี -->
+  <div class="modal" id="editModal">
+    <div class="card">
+      <h2 id="e_title">แก้ไขบัญชี</h2>
+      <div class="field">
+        <label>ชื่อ-นามสกุล (ชื่อผู้ควบคุม)</label>
+        <input id="e_name" type="text" />
+        <div class="hint">⚠️ เปลี่ยนแล้วข้อมูลเก่าที่ผูกกับชื่อเดิมจะไม่ขึ้นใน Dashboard ของคนนี้</div>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label>ระดับบัญชี</label>
+          <select id="e_role"><option value="staff">staff — ผู้ควบคุม</option><option value="admin">admin — ผู้ดูแลระบบ</option></select>
+        </div>
+        <div class="field">
+          <label>สถานะ</label>
+          <select id="e_disabled"><option value="0">ใช้งานอยู่</option><option value="1">ปิดใช้งาน</option></select>
+        </div>
+      </div>
+      <div class="field"><label>หมายเหตุ</label><input id="e_note" type="text" /></div>
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <button class="btn btn-go" onclick="saveEdit()">💾 บันทึก</button>
+        <button class="btn btn-ghost" onclick="closeEdit()">ยกเลิก</button>
+      </div>
+      <div class="msg" id="editMsg"></div>
+    </div>
+  </div>
+
+  <!-- ซ่อมบัญชีกำพร้า -->
+  <div class="card">
+    <h2>🔧 ซ่อมบัญชีที่สร้างค้าง</h2>
+    <div class="sub" style="margin-bottom:14px">
+      ⚠️ ฟอร์มนี้ <b>เขียนสิทธิ์ให้บัญชีที่มีอยู่แล้ว</b> เท่านั้น — <b>ไม่ได้สร้างบัญชีเข้าระบบใหม่</b><br>
+      ถ้าต้องการบัญชีใหม่ ให้ใช้กล่อง "➕ สร้างบัญชีใหม่" ด้านบน<br>
+      ใช้ฟอร์มนี้เมื่อ: บัญชีที่สร้างไว้ก่อนมีระบบนี้ (เช่น admin เดิม) หรือสร้างแล้วเน็ตหลุดกลางคัน<br>
+      หา UID ได้จาก Firebase Console → Authentication หรือให้เจ้าตัวเปิดหน้านี้แล้วดูบรรทัด "UID ของฉัน"
+    </div>
+    <div class="grid2">
+      <div class="field"><label>UID</label><input id="f_uid" type="text" placeholder="เช่น KqGWoPSj..." /></div>
+      <div class="field"><label>อีเมล/username</label><input id="f_email" type="text" /></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>ชื่อ-นามสกุล</label><input id="f_name" type="text" /></div>
+      <div class="field"><label>ระดับ</label><select id="f_role"><option value="staff">staff</option><option value="admin">admin</option></select></div>
+    </div>
+    <button class="btn btn-warn" onclick="doRepair()">🔧 สร้าง/เขียนทับ users doc</button>
+    <div class="msg" id="repairMsg"></div>
+  </div>
+</div>
+
+<script>
+const cfg = {
+  apiKey:'PASTE_API_KEY',
+  authDomain:'PASTE_PROJECT_ID.firebaseapp.com',
+  projectId:'PASTE_PROJECT_ID',
+  storageBucket:'PASTE_PROJECT_ID.firebasestorage.app',
+  messagingSenderId:'PASTE_SENDER_ID',
+  appId:'PASTE_APP_ID'
+};
+if (!firebase.apps.length) firebase.initializeApp(cfg);
+const db = firebase.firestore();
+const auth = firebase.auth();
+const EMAIL_DOMAIN = '@interview-survey.local';
+const SEC_APP  = '_userAdmin';
+const PENDING_KEY = '_is_pending_user_docs';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function msg(el, text, cls){ el.className = 'msg ' + (cls||'info'); el.innerHTML = text; }
+
+// ชื่อต้องตรงเป๊ะกับที่เขียนลง households/stations — ใช้ตัวเดียวกับทั้งระบบ
+// (NFC + ตัดอักขระล่องหน zero-width + ยุบช่องว่างซ้อน)
+function normName(s){
+  return String(s ?? '').normalize('NFC').replace(/[​-‏‪-‮⁠﻿]/g,'')
+    .trim().replace(/\s+/g,' ');
+}
+
+// ===== auth instance แยก — สร้างบัญชีโดยไม่เตะ session ของ admin ที่ login อยู่ =====
+function secAuth(){
+  const app = firebase.apps.find(a => a.name === SEC_APP) || firebase.initializeApp(cfg, SEC_APP);
+  return app.auth();
+}
+
+
+// ===== pending queue (กันเขียน Firestore ไม่สำเร็จหลังสร้าง Auth แล้ว) =====
+function readPending(){ try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); } catch(_) { return []; } }
+function queuePending(rec){ const a = readPending(); a.push(rec); localStorage.setItem(PENDING_KEY, JSON.stringify(a)); }
+function clearPending(uid){ localStorage.setItem(PENDING_KEY, JSON.stringify(readPending().filter(x => x.uid !== uid))); }
+
+function renderPending(){
+  const list = readPending(), el = $('pendingBanner');
+  if (!list.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = `⚠️ มีบัญชี <b>${list.length}</b> รายการที่สร้างแล้วแต่บันทึกสิทธิ์ไม่สำเร็จ — เจ้าตัวจะ login ได้แต่ยังไม่มีสิทธิ์<br>` +
+    list.map(r => `<div style="margin-top:8px">• <b>${esc(r.email)}</b> (${esc(r.role)})
+      <button class="btn btn-warn btn-sm" style="margin-left:8px" onclick="retryPending('${r.uid}')">ลองบันทึกอีกครั้ง</button></div>`).join('');
+}
+
+async function retryPending(uid){
+  const rec = readPending().find(x => x.uid === uid);
+  if (!rec) return;
+  try {
+    await writeUserDoc(rec);
+    clearPending(uid); renderPending(); await loadUsers(); await rebuildSupervisors();
+  } catch(e){ alert('ยังบันทึกไม่สำเร็จ: ' + e.message); }
+}
+
+// ===== เขียน users doc =====
+async function writeUserDoc(r){
+  const me = auth.currentUser ? auth.currentUser.email.replace(EMAIL_DOMAIN,'') : '';
+  await db.collection('users').doc(r.uid).set({
+    uid:            r.uid,
+    email:          r.email,
+    username:       r.email.replace(EMAIL_DOMAIN,''),
+    role:           r.role,
+    supervisorName: normName(r.name),
+    displayName:    normName(r.name),
+    note:           r.note || '',
+    disabled:       false,
+    createdAt:      new Date().toISOString(),
+    createdBy:      me,
+    updatedAt:      new Date().toISOString(),
+    updatedBy:      me
+  }, { merge: true });
+}
+
+// ===== สร้างบัญชี =====
+function onRoleChange(){
+  const isAdmin = $('c_role').value === 'admin';
+  $('c_idLabel').textContent = isAdmin ? 'ชื่อผู้ใช้ (username)' : 'อีเมล (ใช้ login + กู้รหัสผ่าน)';
+  $('c_email').placeholder   = isAdmin ? 'เช่น admin2' : 'เช่น somchai@gmail.com';
+  $('c_idHint').innerHTML    = isAdmin
+    ? 'ใส่<b>อีเมลจริง</b>ได้ (แนะนำ — กู้รหัสผ่านเองได้) · ถ้าใส่ชื่อผู้ใช้เฉยๆ ระบบจะต่อ <code>@interview-survey.local</code> ให้ ซึ่งจะส่งอีเมลกู้รหัสไม่ได้'
+    : 'ต้องเป็นอีเมลจริงที่เปิดอ่านได้ — ใช้ตอนลืมรหัสผ่าน';
+}
+
+async function doCreate(){
+  const role = $('c_role').value;
+  const raw  = $('c_email').value.trim().toLowerCase().replace(/\s+/g,'');
+  const name = normName($('c_name').value);
+  const pw   = $('c_pw').value, pw2 = $('c_pw2').value;
+  const note = $('c_note').value.trim();
+
+  if (!raw)                 return msg($('createMsg'), role === 'admin' ? 'กรอกชื่อผู้ใช้' : 'กรอกอีเมล', 'err');
+  if (!name)                return msg($('createMsg'), 'กรอกชื่อ-นามสกุล', 'err');
+  if (pw.length < 8)        return msg($('createMsg'), 'รหัสผ่านต้องยาวอย่างน้อย 8 ตัว', 'err');
+  if (pw !== pw2)           return msg($('createMsg'), 'รหัสผ่านสองช่องไม่ตรงกัน', 'err');
+  const email = raw.includes('@') ? raw : raw + EMAIL_DOMAIN;
+  if (role === 'staff' && email.endsWith(EMAIL_DOMAIN))
+    return msg($('createMsg'), 'บัญชี staff ต้องใช้อีเมลจริง (เช่น @gmail.com) เพื่อให้กู้รหัสผ่านเองได้', 'err');
+
+  $('createBtn').disabled = true;
+  msg($('createMsg'), 'กำลังตรวจสอบ...', 'info');
+  try {
+    const dup = await db.collection('users').where('email','==',email).limit(1).get();
+    if (!dup.empty) throw new Error('มีบัญชีอีเมลนี้อยู่แล้ว');
+
+    msg($('createMsg'), 'กำลังสร้างบัญชี...', 'info');
+    const cred = await secAuth().createUserWithEmailAndPassword(email, pw);
+    const uid  = cred.user.uid;
+    const rec  = { uid, email, role, name, note };
+    queuePending(rec);                                  // กันเขียน Firestore พลาด
+    try { await secAuth().signOut(); } catch(_) {}      // เคลียร์ session รอง
+
+    await writeUserDoc(rec);
+    clearPending(uid); renderPending();
+
+    ['c_email','c_name','c_pw','c_pw2','c_note'].forEach(id => $(id).value = '');
+    msg($('createMsg'), `✅ สร้างบัญชี <b>${esc(email)}</b> (${role}) แล้ว — แจ้งรหัสผ่านให้เจ้าตัว`, 'ok');
+    await loadUsers(); await rebuildSupervisors();
+  } catch(e){
+    const m = e.code === 'auth/email-already-in-use' ? 'อีเมล/ชื่อผู้ใช้นี้ถูกใช้ไปแล้ว'
+            : e.code === 'auth/invalid-email'        ? 'รูปแบบอีเมลไม่ถูกต้อง'
+            : e.code === 'auth/weak-password'        ? 'รหัสผ่านสั้นเกินไป'
+            : e.code === 'permission-denied'         ? 'ไม่มีสิทธิ์เขียน users — ตรวจ Firestore rules'
+            : e.message;
+    msg($('createMsg'), 'สร้างไม่สำเร็จ: ' + esc(m), 'err');
+    renderPending();
+  }
+  $('createBtn').disabled = false;
+}
+
+// ===== รายชื่อ =====
+let USERS = [];
+async function loadUsers(){
+  try {
+    const snap = await db.collection('users').get();
+    USERS = snap.docs.map(d => d.data());
+    USERS.sort((a,b) => (a.role === b.role ? String(a.displayName||'').localeCompare(String(b.displayName||'')) : (a.role === 'admin' ? -1 : 1)));
+    $('cnt').textContent = `(${USERS.length} บัญชี · admin ${USERS.filter(u=>u.role==='admin'&&!u.disabled).length} · staff ${USERS.filter(u=>u.role==='staff'&&!u.disabled).length})`;
+    $('tbl').innerHTML = USERS.length === 0
+      ? '<tbody><tr><td style="color:#64748b">ยังไม่มีบัญชีในระบบ — สร้างบัญชี admin ของคุณเองก่อน (ดูกล่องด้านบน)</td></tr></tbody>'
+      : `<thead><tr><th>ชื่อ / ผู้ควบคุม</th><th>อีเมล</th><th>ระดับ</th><th>สถานะ</th><th></th></tr></thead>
+         <tbody>${USERS.map(u => `
+           <tr class="${u.disabled ? 'off' : ''}">
+             <td><b>${esc(u.displayName || u.username)}</b>${u.note ? `<div style="font-size:11px;color:#64748b">${esc(u.note)}</div>` : ''}</td>
+             <td style="font-size:12px;color:#94a3b8">${esc(u.email)}</td>
+             <td><span class="pill pill-${u.role}">${esc(u.role)}</span></td>
+             <td id="st_${esc(u.uid)}">${u.disabled ? '<span class="pill pill-off">ปิดใช้งาน</span>' : '<span style="color:#34d399">ใช้งานอยู่</span>'}</td>
+             <td style="white-space:nowrap;text-align:right">
+               <button class="btn btn-ghost btn-sm" onclick="openEdit('${u.uid}')">แก้ไข</button>
+               <button class="btn btn-sm" style="background:#7f1d1d;color:#fecaca" onclick="deleteUser('${u.uid}')"
+                 ${u.uid === (auth.currentUser && auth.currentUser.uid) ? 'disabled title="ลบบัญชีตัวเองไม่ได้"' : ''}>ลบ</button>
+             </td>
+           </tr>`).join('')}</tbody>`;
+    msg($('listMsg'), '', 'info');
+  } catch(e){
+    msg($('listMsg'), 'โหลดรายชื่อไม่สำเร็จ: ' + esc(e.message) + (e.code === 'permission-denied' ? ' (ยังไม่ได้ publish rules เฟส 1 หรือบัญชีนี้ไม่ใช่ admin)' : ''), 'err');
+  }
+}
+
+// ===== กติกาความปลอดภัยของบัญชี =====
+const myUid       = () => auth.currentUser && auth.currentUser.uid;
+const activeAdmins = () => USERS.filter(x => x.role === 'admin' && !x.disabled);
+// เหตุผลที่ห้าม (คืน string) หรือ null ถ้าทำได้
+function blockReason(u, action){
+  if (u.uid === myUid()) {
+    if (action === 'delete')  return 'ลบบัญชีตัวเองไม่ได้';
+    if (action === 'disable') return 'ปิดบัญชีตัวเองไม่ได้';
+    if (action === 'demote')  return 'ลดระดับตัวเองไม่ได้';
+  }
+  const isLastAdmin = u.role === 'admin' && !u.disabled && activeAdmins().length <= 1;
+  if (isLastAdmin && ['delete','disable','demote'].includes(action))
+    return 'ระบบต้องมีผู้ดูแล (admin) ที่ใช้งานอยู่อย่างน้อย 1 คน';
+  return null;
+}
+
+// ===== หน้าต่างแก้ไข =====
+let EDITING = null;
+function openEdit(uid){
+  const u = USERS.find(x => x.uid === uid); if (!u) return;
+  EDITING = uid;
+  $('e_name').value = u.displayName || '';
+  $('e_role').value = u.role;
+  $('e_note').value = u.note || '';
+  $('e_disabled').value = u.disabled ? '1' : '0';
+  $('e_title').innerHTML = `แก้ไขบัญชี — <b>${esc(u.email)}</b>${u.uid === myUid() ? ' <span class="pill pill-staff">บัญชีของคุณ</span>' : ''}`;
+  msg($('editMsg'), '', 'info');
+  $('editModal').style.display = 'flex';
+}
+function closeEdit(){ EDITING = null; $('editModal').style.display = 'none'; }
+
+async function saveEdit(){
+  const u = USERS.find(x => x.uid === EDITING); if (!u) return;
+  const name = normName($('e_name').value);
+  const role = $('e_role').value;
+  const disabled = $('e_disabled').value === '1';
+  if (!name) return msg($('editMsg'), 'กรอกชื่อ-นามสกุล', 'err');
+
+  if (role !== u.role && u.role === 'admin') {
+    const why = blockReason(u, 'demote');
+    if (why) return msg($('editMsg'), '❌ ' + why, 'err');
+  }
+  if (disabled && !u.disabled) {
+    const why = blockReason(u, 'disable');
+    if (why) return msg($('editMsg'), '❌ ' + why, 'err');
+  }
+  if (name !== (u.displayName || '') &&
+      !confirm('เปลี่ยนชื่อผู้ควบคุมจาก "' + (u.displayName||'-') + '" เป็น "' + name + '"\n\n'
+             + '⚠️ ข้อมูลเก่าที่บันทึกด้วยชื่อเดิมจะไม่ขึ้นใน Dashboard ของคนนี้อีก')) return;
+  try {
+    await db.collection('users').doc(u.uid).set({
+      displayName: name, supervisorName: name, role, disabled,
+      note: $('e_note').value.trim(),
+      updatedAt: new Date().toISOString(),
+      updatedBy: auth.currentUser.email.replace(EMAIL_DOMAIN,'')
+    }, { merge: true });
+    closeEdit();
+    await loadUsers(); await rebuildSupervisors();
+  } catch(e){ msg($('editMsg'), 'บันทึกไม่สำเร็จ: ' + esc(e.message), 'err'); }
+}
+
+// ===== ลบบัญชี =====
+async function deleteUser(uid){
+  const u = USERS.find(x => x.uid === uid); if (!u) return;
+  const why = blockReason(u, 'delete');
+  if (why) return alert('❌ ' + why);
+  if (!confirm(`ลบบัญชี "${u.displayName || u.email}" ออกจากระบบ?\n\n`
+    + `• หมดสิทธิ์ทันที เข้าใช้งานไม่ได้ทุกแอป\n`
+    + `• หายจากรายชื่อผู้ควบคุมในแบบสอบถาม\n`
+    + `• ข้อมูลสำรวจที่เก็บไว้แล้วไม่หาย\n\n`
+    + `หมายเหตุ: รหัสผ่านเดิมในระบบ Firebase ยังลบไม่ได้จากหน้านี้ แต่ใช้เข้าอะไรไม่ได้แล้ว`)) return;
+  try {
+    await db.collection('users').doc(uid).delete();
+    await loadUsers(); await rebuildSupervisors();
+    msg($('listMsg'), `✓ ลบบัญชี ${esc(u.email)} แล้ว`, 'ok');
+  } catch(e){
+    msg($('listMsg'), 'ลบไม่สำเร็จ: ' + esc(e.message)
+      + (e.code === 'permission-denied' ? ' — ต้องอัปเดต Firestore rules ให้ admin ลบ users ได้ก่อน' : ''), 'err');
+  }
+}
+
+// ===== rebuild config/supervisors — รายชื่อที่แอปเอาไปทำ dropdown =====
+// เก็บแยกจาก users เพื่อไม่ให้ผู้สำรวจ (anonymous) อ่านอีเมล/username ได้
+async function rebuildSupervisors(){
+  try {
+    const list = USERS.filter(u => !u.disabled && u.supervisorName)
+      .map(u => ({ key: u.supervisorName, name: u.displayName || u.supervisorName }))
+      .filter((v,i,a) => a.findIndex(x => x.key === v.key) === i)
+      .sort((a,b) => a.name.localeCompare(b.name,'th'));
+    await db.collection('config').doc('supervisors').set({
+      list, updatedAt: new Date().toISOString(),
+      updatedBy: auth.currentUser ? auth.currentUser.email.replace(EMAIL_DOMAIN,'') : ''
+    });
+    msg($('listMsg'), `✓ อัปเดตรายชื่อผู้ควบคุมในแอปแล้ว (${list.length} คน)`, 'ok');
+  } catch(e){ msg($('listMsg'), 'อัปเดตรายชื่อไม่สำเร็จ: ' + esc(e.message), 'err'); }
+}
+
+// ===== เปลี่ยนอีเมลที่ใช้ login ของบัญชีตัวเอง =====
+// Firebase บล็อก updateEmail ตรงๆ (email enumeration protection) → ต้องส่งลิงก์ยืนยันไปอีเมลใหม่
+// ข้อดี: uid เดิม รหัสผ่านเดิม สิทธิ์เดิม ข้อมูลไม่ขาดตอน
+async function changeMyEmail(){
+  const u = auth.currentUser;
+  if (!u) return;
+  const nw = (prompt('อีเมลใหม่ที่จะใช้เข้าระบบ\n\nระบบจะส่งลิงก์ยืนยันไปที่อีเมลนั้น '
+    + 'กดลิงก์แล้วอีเมลถึงจะเปลี่ยน (รหัสผ่านและสิทธิ์เดิมไม่เปลี่ยน)', u.email || '') || '').trim().toLowerCase();
+  if (!nw || nw === u.email) return;
+  if (!nw.includes('@') || nw.endsWith(EMAIL_DOMAIN))
+    return alert('ต้องเป็นอีเมลจริงที่เปิดอ่านได้ (ไม่ใช่ ' + EMAIL_DOMAIN + ')');
+  try {
+    await u.verifyBeforeUpdateEmail(nw);
+    alert('ส่งลิงก์ยืนยันไปที่ ' + nw + ' แล้ว\n\n'
+      + '1) เปิดอีเมลแล้วกดลิงก์ (ถ้าไม่เจอ ดูในกล่องจดหมายขยะ)\n'
+      + '2) กลับมา login ใหม่ด้วยอีเมลใหม่ + รหัสผ่านเดิม\n\n'
+      + 'จนกว่าจะกดลิงก์ ให้ใช้อีเมลเดิม login ไปก่อน');
+  } catch(e){
+    alert(e.code === 'auth/requires-recent-login'
+      ? 'เพื่อความปลอดภัย ต้องออกจากระบบแล้วเข้าใหม่ก่อนเปลี่ยนอีเมล'
+      : 'เปลี่ยนไม่สำเร็จ: ' + e.message);
+  }
+}
+
+// ===== ซ่อมบัญชีกำพร้า =====
+async function doRepair(){
+  const uid = $('f_uid').value.trim(), rawEmail = $('f_email').value.trim().toLowerCase();
+  const name = normName($('f_name').value), role = $('f_role').value;
+  if (!uid || !rawEmail || !name) return msg($('repairMsg'), 'กรอก UID, อีเมล และชื่อให้ครบ', 'err');
+  const email = rawEmail.includes('@') ? rawEmail : rawEmail + EMAIL_DOMAIN;
+  if (!confirm('ยืนยัน: อีเมลนี้ "มีบัญชีเข้าระบบอยู่แล้ว" ใช่ไหม?\n\n'
+    + 'ฟอร์มนี้เขียนแค่สิทธิ์ ไม่ได้สร้างบัญชีใหม่\n'
+    + 'ถ้ายังไม่เคยสร้างบัญชี ให้กดยกเลิกแล้วไปใช้กล่อง "สร้างบัญชีใหม่" แทน')) return;
+  try {
+    await writeUserDoc({ uid, email, role, name, note: '' });
+    clearPending(uid); renderPending();
+    ['f_uid','f_email','f_name'].forEach(id => $(id).value = '');
+    msg($('repairMsg'), '✅ เขียน users doc แล้ว', 'ok');
+    await loadUsers(); await rebuildSupervisors();
+  } catch(e){ msg($('repairMsg'), 'ไม่สำเร็จ: ' + esc(e.message), 'err'); }
+}
+
+// ===== boot =====
+auth.onAuthStateChanged(async user => {
+  if (!user || user.isAnonymous) { $('meBox').innerHTML = 'ยังไม่ได้เข้าสู่ระบบ'; return; }
+  let role = '(ยังไม่มี users doc)';
+  try {
+    const snap = await db.collection('users').doc(user.uid).get();
+    if (snap.exists) {
+      const d = snap.data();
+      role = d.role + (d.disabled ? ' · ปิดใช้งาน' : '');
+      // อีเมลที่ใช้ login เปลี่ยนไปแล้ว (ยืนยันผ่านลิงก์) → อัปเดตในระบบให้ตรงกัน
+      if (user.email && d.email !== user.email) {
+        db.collection('users').doc(user.uid)
+          .set({ email: user.email, username: user.email.replace(EMAIL_DOMAIN,''),
+                 updatedAt: new Date().toISOString(), updatedBy: 'auto-sync' }, { merge: true })
+          .catch(() => {});
+      }
+    }
+  } catch(_) {}
+  $('meBox').innerHTML =
+    `เข้าสู่ระบบเป็น <b>${esc(user.email)}</b> · ระดับ: <b>${esc(role)}</b>
+     <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="changeMyEmail()">✉️ เปลี่ยนอีเมลที่ใช้เข้าระบบ</button>
+     <a href="#" onclick="auth.signOut();return false" style="margin-left:8px">ออกจากระบบ</a>
+     <div style="margin-top:8px">UID ของฉัน: <code>${esc(user.uid)}</code>
+       <button class="btn btn-ghost btn-sm" style="margin-left:6px"
+         onclick="navigator.clipboard.writeText('${esc(user.uid)}').then(()=>this.textContent='คัดลอกแล้ว ✓')">คัดลอก</button>
+       <div class="hint">ใช้ใส่ใน Firestore rules ช่อง <code>isRoot()</code> ตอนตั้งค่าครั้งแรก</div>
+     </div>`;
+  renderPending();
+  loadUsers();
+});
+onRoleChange();
+</script>
+</body>
+</html>

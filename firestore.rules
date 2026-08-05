@@ -1,0 +1,61 @@
+rules_version = '2';
+
+// Firestore Security Rules — interview-survey
+// ก๊อปทั้งไฟล์นี้ไปวางใน Firebase Console → Firestore Database → Rules → Publish
+//
+// หลักการ (เหมือนระบบเดิม):
+//   - read/create/update เปิด: แอปผู้สำรวจเขียนโดยไม่ต้อง login (ใช้ anonymous auth)
+//   - delete ปิดเกือบทั้งหมด: ลบได้เฉพาะ doc ที่ id มีคำว่า SEED (ให้ tools/cleanup-seed ลบ test data ได้)
+//   - config/ เขียนได้เฉพาะบัญชีที่ login แล้ว (admin)
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSeed(id) { return id.matches('.*SEED.*'); }
+
+    // ===== Home Interview =====
+    match /households/{hhId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if isSeed(hhId);
+
+      match /members/{mId} {
+        allow read: if true;
+        allow create, update: if true;
+        allow delete: if isSeed(hhId) || isSeed(mId);
+
+        match /trips/{tId} {
+          allow read: if true;
+          allow create, update: if true;
+          allow delete: if isSeed(hhId) || isSeed(mId) || isSeed(tId);
+        }
+      }
+    }
+
+    // ===== Roadside Interview =====
+    match /roadside_stations/{stId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if isSeed(stId);
+
+      match /interviews/{ivId} {
+        allow read: if true;
+        allow create, update: if true;
+        allow delete: if isSeed(stId) || isSeed(ivId);
+      }
+    }
+
+    // ===== สถานที่ (auto-learn, ใช้ร่วมกันทุกคน) =====
+    match /places/{placeId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
+
+    // ===== config/app (API keys), users, supervisors, รอบเก็บข้อมูล =====
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

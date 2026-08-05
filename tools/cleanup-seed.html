@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cleanup SEED — Banphai Survey</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Sarabun',sans-serif}
+  body{background:linear-gradient(160deg,#fee2e2,#fef2f2,#f8fafc);min-height:100vh;padding:24px}
+  .card{max-width:720px;margin:0 auto;background:#fff;border-radius:16px;padding:28px;box-shadow:0 8px 40px rgba(0,0,0,.08)}
+  h1{font-size:22px;color:#0f172a;margin-bottom:6px}
+  .sub{font-size:13px;color:#64748b;margin-bottom:20px}
+  .warn{background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:14px;margin-bottom:14px;font-size:13px;color:#78350f;line-height:1.7}
+  .warn b{color:#b45309}
+  .danger{background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:14px;margin-bottom:18px;font-size:13px;color:#7f1d1d;line-height:1.7}
+  code{background:#0f172a;color:#fbbf24;padding:1px 6px;border-radius:4px;font:12px ui-monospace,Menlo,monospace}
+  .row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+  .btn{flex:1;min-width:200px;padding:14px;border:none;border-radius:10px;font:600 14px 'Sarabun';cursor:pointer;transition:all .15s}
+  .btn-del{background:#dc2626;color:#fff}
+  .btn-del:hover{background:#b91c1c;transform:translateY(-1px)}
+  .btn-del:disabled{background:#cbd5e1;cursor:not-allowed;transform:none}
+  .btn-warn{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;flex:0 0 auto;min-width:auto}
+  .progress{height:8px;background:#f1f5f9;border-radius:99px;overflow:hidden;margin-bottom:14px}
+  .progress-fill{height:100%;background:linear-gradient(90deg,#991b1b,#f87171);transition:width .25s ease;width:0}
+  .log{background:#0f172a;color:#94a3b8;font:12px ui-monospace,Menlo,monospace;padding:14px;border-radius:8px;height:340px;overflow-y:auto;line-height:1.55}
+  .log .ok{color:#34d399}
+  .log .info{color:#60a5fa}
+  .log .err{color:#f87171}
+  .stat{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  .stat>div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;text-align:center}
+  .stat strong{display:block;font-size:20px;color:#0f172a;line-height:1}
+  .stat span{font-size:10px;color:#64748b;margin-top:4px;display:block;letter-spacing:.04em}
+</style>
+<script src="auth-gate.js"></script>
+</head>
+<body>
+<div class="card">
+  <a href="index.html" style="display:inline-block;margin-bottom:14px;color:#64748b;text-decoration:none;font-size:14px;font-weight:600;">← กลับไปหน้าเครื่องมือ</a>
+  <h1>🧹 Cleanup SEED Data</h1>
+  <div class="sub">ลบเฉพาะ document ที่ ID มีคำว่า <code>SEED</code> ออกจาก Firestore (ข้อมูลจริงไม่ถูกแตะ)</div>
+
+  <div class="warn">
+    <b>✅ ลบ SEED ได้เลย ไม่ต้องแก้ rules</b><br>
+    Firestore rules อนุญาตให้ลบเฉพาะ doc ที่ ID มีคำว่า <code>SEED</code> อยู่แล้ว
+    (<code>allow delete: if isSeed(id)</code>) — ข้อมูลจริงยังลบผ่านเว็บไม่ได้
+  </div>
+
+  <div class="warn">
+    <b>ลบอะไรบ้าง:</b><br>
+    • Roadside: station ที่ ID มี SEED (เช่น <code>RS-SEED-MB01</code>) + interviews ทั้งหมดในนั้น<br>
+    • Home: household ที่ ID มี SEED (เช่น <code>HH-SEED-001-1</code>) + members + trips ทั้งหมด<br>
+    การลบนับเป็น write (เผื่อ quota 20K/วัน — seed Home มี ~3,300 docs)
+  </div>
+
+  <div class="stat">
+    <div><strong id="cScan">0</strong><span>SCANNED</span></div>
+    <div><strong id="cDel">0</strong><span>DELETED</span></div>
+    <div><strong id="cErr">0</strong><span>ERRORS</span></div>
+  </div>
+
+  <div class="progress"><div class="progress-fill" id="bar"></div></div>
+
+  <div class="row">
+    <button class="btn btn-del" id="btnRoad" onclick="cleanup('roadside')">🚦 ลบ SEED — Roadside</button>
+    <button class="btn btn-del" id="btnHome" onclick="cleanup('home')">🏘️ ลบ SEED — Home</button>
+    <button class="btn btn-warn" onclick="clearLog()">ล้าง log</button>
+  </div>
+
+  <div class="log" id="log"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+const cfg = {
+  apiKey:'PASTE_API_KEY',
+  authDomain:'PASTE_PROJECT_ID.firebaseapp.com',
+  projectId:'PASTE_PROJECT_ID',
+  storageBucket:'PASTE_PROJECT_ID.firebasestorage.app',
+  messagingSenderId:'PASTE_SENDER_ID',
+  appId:'PASTE_APP_ID'
+};
+if (!firebase.apps.length) firebase.initializeApp(cfg);
+const db = firebase.firestore();
+
+const logEl  = document.getElementById('log');
+const bar    = document.getElementById('bar');
+const cScan  = document.getElementById('cScan');
+const cDel   = document.getElementById('cDel');
+const cErr   = document.getElementById('cErr');
+const btnRoad= document.getElementById('btnRoad');
+const btnHome= document.getElementById('btnHome');
+const log = (m, cls='info') => { const t=new Date().toLocaleTimeString('th-TH'); logEl.innerHTML += `<div class="${cls}">[${t}] ${m}</div>`; logEl.scrollTop=logEl.scrollHeight; };
+const clearLog = () => logEl.innerHTML='';
+
+const isSeed = id => id.includes('SEED');
+const CHUNK = 400;
+let scanned = 0, deleted = 0, errors = 0;
+const refresh = () => { cScan.textContent=scanned; cDel.textContent=deleted; cErr.textContent=errors; };
+
+// ลบ doc array แบบ batch (commit ทีละ ≤400) — คืน true ถ้าลบสำเร็จอย่างน้อย 1
+async function deleteRefs(refs) {
+  for (let i = 0; i < refs.length; i += CHUNK) {
+    const slice = refs.slice(i, i + CHUNK);
+    const batch = db.batch();
+    slice.forEach(r => batch.delete(r));
+    try {
+      await batch.commit();
+      deleted += slice.length;
+      refresh();
+    } catch (e) {
+      errors += slice.length;
+      refresh();
+      if ((e.code||'').includes('permission-denied')) {
+        throw new Error('PERMISSION_DENIED');
+      }
+      log('⚠️ ลบ batch ไม่สำเร็จ: ' + (e.message||e), 'err');
+    }
+  }
+}
+
+async function cleanup(which) {
+  if (!confirm(`ยืนยันลบข้อมูล SEED ของ ${which}? (ข้อมูลจริงไม่ถูกแตะ)`)) return;
+  btnRoad.disabled = true; btnHome.disabled = true;
+  scanned = 0; deleted = 0; errors = 0; refresh();
+  bar.style.width = '0%';
+
+  try {
+    if (which === 'roadside') await cleanupRoadside();
+    else                      await cleanupHome();
+    bar.style.width = '100%';
+    log(`🎉 เสร็จสิ้น — ลบ ${deleted} docs (error ${errors})`, 'ok');
+  } catch (e) {
+    if (e.message === 'PERMISSION_DENIED') {
+      log('🚫 ลบไม่ได้ — Firestore rules ยังไม่อนุญาต delete สำหรับ SEED', 'err');
+      log('   ตรวจว่า publish rules ใหม่ (allow delete: if isSeed(id)) แล้วหรือยัง', 'err');
+    } else {
+      log('❌ error: ' + (e.message||e), 'err');
+    }
+  } finally {
+    btnRoad.disabled = false; btnHome.disabled = false;
+  }
+}
+
+async function cleanupRoadside() {
+  log('🚦 สแกน roadside_stations...', 'info');
+  const snap = await db.collection('roadside_stations').get();
+  const seedStations = snap.docs.filter(d => isSeed(d.id));
+  log(`พบ station SEED ${seedStations.length} จุด (จากทั้งหมด ${snap.size})`, 'info');
+
+  for (const st of seedStations) {
+    scanned++; refresh();
+    // 1) ลบ interviews ใต้ station ก่อน
+    const ivSnap = await st.ref.collection('interviews').get();
+    log(`  ↳ ${st.id}: interviews ${ivSnap.size} ราย`, 'info');
+    await deleteRefs(ivSnap.docs.map(d => d.ref));
+    // 2) ลบ station doc
+    await deleteRefs([st.ref]);
+    log(`  ✓ ลบ ${st.id} แล้ว`, 'ok');
+  }
+}
+
+async function cleanupHome() {
+  log('🏘️ สแกน households...', 'info');
+  const snap = await db.collection('households').get();
+  const seedHhs = snap.docs.filter(d => isSeed(d.id));
+  log(`พบ household SEED ${seedHhs.length} หลัง (จากทั้งหมด ${snap.size})`, 'info');
+
+  let i = 0;
+  for (const hh of seedHhs) {
+    scanned++; i++;
+    // 1) members + trips
+    const mSnap = await hh.ref.collection('members').get();
+    for (const m of mSnap.docs) {
+      const tSnap = await m.ref.collection('trips').get();
+      await deleteRefs(tSnap.docs.map(d => d.ref)); // trips
+      await deleteRefs([m.ref]);                    // member
+    }
+    // 2) household doc
+    await deleteRefs([hh.ref]);
+    if (i % 20 === 0) { log(`  ↳ ลบแล้ว ${i}/${seedHhs.length} household`, 'ok'); }
+    bar.style.width = Math.round(i / seedHhs.length * 100) + '%';
+    refresh();
+  }
+}
+</script>
+</body>
+</html>

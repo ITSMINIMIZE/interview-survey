@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tools — Banphai Survey</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Sarabun',sans-serif}
+  body{background:#0f172a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .wrap{max-width:600px;width:100%}
+  h1{font-size:24px;color:#f1f5f9;text-align:center;margin-bottom:8px}
+  p{color:#64748b;text-align:center;font-size:13px;margin-bottom:28px}
+  a.tool{display:block;background:#1e293b;border:1px solid #334155;border-radius:14px;padding:22px;margin-bottom:14px;text-decoration:none;transition:all .2s}
+  a.tool:hover{border-color:#475569;transform:translateY(-2px)}
+  a.tool h2{font-size:17px;color:#f1f5f9;margin-bottom:6px}
+  a.tool .desc{color:#94a3b8;font-size:13px;line-height:1.6}
+  a.tool .badge{display:inline-block;background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(252,165,165,.3);padding:2px 10px;border-radius:99px;font-size:11px;font-weight:600;margin-top:8px}
+  a.tool .badge.safe{background:rgba(16,185,129,.15);color:#6ee7b7;border-color:rgba(110,231,183,.3)}
+</style>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="auth-gate.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧰 Banphai Survey — Tools</h1>
+  <p>เครื่องมือสำหรับทดสอบและจัดการระบบ</p>
+  <a href="../index.html" style="display:inline-block;margin-bottom:18px;padding:8px 16px;background:#1e293b;border:1px solid #334155;border-radius:10px;color:#94a3b8;text-decoration:none;font-size:14px;font-weight:600;">🏠 กลับเมนูหลัก</a>
+
+  <a class="tool" href="data-round.html">
+    <h2>🗓 รอบเก็บข้อมูล</h2>
+    <div class="desc">กำหนดว่ารอบเก็บข้อมูลปัจจุบันเริ่มเมื่อไหร่ — ข้อมูลเก่ากว่านี้จะไม่ถูก sync ขึ้นระบบและไม่นับเข้ารายงาน (ใช้ตอนล้าง DB เริ่มเก็บข้อมูลจริง)</div>
+    <span class="badge safe">ปลอดภัย — ไม่ลบข้อมูล แค่กรอง</span>
+  </a>
+
+  <a class="tool" href="users.html">
+    <h2>👥 จัดการบัญชีผู้ใช้</h2>
+    <div class="desc">สร้าง/แก้ไขบัญชี admin (ผู้ดูแล) และ staff (ผู้ควบคุม) · กำหนดชื่อผู้ควบคุมที่ใช้จับคู่ทีม · ปิด-เปิดบัญชี</div>
+    <span class="badge safe">ปลอดภัย — login admin เท่านั้น</span>
+  </a>
+
+  <a class="tool" href="seed-roadside.html">
+    <h2>🚦 Seed Roadside Data</h2>
+    <div class="desc">สร้าง 3 จุดสำรวจ + 1,080 interviews (6 surveyors × 60 ราย) เขียนตรงไปยัง Firestore</div>
+    <span class="badge">⚠ DESTRUCTIVE — ใช้กับ DB ที่ว่าง</span>
+  </a>
+
+  <a class="tool" href="seed-home.html">
+    <h2>🏘️ Seed Home Data</h2>
+    <div class="desc">สร้าง 300 households (100 surveyors × 3) + ~750 members + ~2,250 trips</div>
+    <span class="badge">⚠ DESTRUCTIVE — ใช้กับ DB ที่ว่าง</span>
+  </a>
+
+  <a class="tool" href="import-zones.html">
+    <h2>🗺️ Import Zones → zones.js</h2>
+    <div class="desc">อัปโหลด shapefile (.zip) / GeoJSON → ตรวจ field บังคับ (N, DISTRICT, D_NAME) → สร้าง zones.js สำหรับ Dashboard OD-matrix</div>
+    <span class="badge safe">ปลอดภัย — แปลงไฟล์ในเครื่อง ไม่แตะ DB</span>
+  </a>
+
+  <a class="tool" href="config.html">
+    <h2>🔑 App Config — API Keys</h2>
+    <div class="desc">จัดการ Google / Longdo API key ของทั้ง 2 แอป (เก็บใน Firestore config/app) — login admin ถึงแก้ได้</div>
+    <span class="badge safe">ปลอดภัย — login admin เท่านั้น</span>
+  </a>
+
+  <a class="tool" href="seed-places.html">
+    <h2>📍 Pre-seed Places</h2>
+    <div class="desc">เติมสถานที่ยอดฮิตในพื้นที่ลง places ก่อนวันสำรวจ → ค้นเจอใน local ทันที ลดการยิง Longdo/Google</div>
+    <span class="badge safe">ปลอดภัย — เตรียมข้อมูลก่อนสำรวจ</span>
+  </a>
+
+  <a class="tool" href="cleanup-seed.html">
+    <h2>🧹 Cleanup SEED Data</h2>
+    <div class="desc">ลบเฉพาะ doc ที่ ID มีคำว่า SEED (ข้อมูลจริงไม่ถูกแตะ) — ใช้ก่อน re-seed · ต้องเปิด delete ใน rules ชั่วคราว</div>
+    <span class="badge">⚠ ลบข้อมูล test ออกจาก Firestore</span>
+  </a>
+</div>
+</body>
+</html>

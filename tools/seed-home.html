@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Seed Home — 100 surveyors × 3 households</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Sarabun',sans-serif}
+  body{background:linear-gradient(160deg,#dbeafe,#eff6ff,#f8fafc);min-height:100vh;padding:24px}
+  .card{max-width:720px;margin:0 auto;background:#fff;border-radius:16px;padding:28px;box-shadow:0 8px 40px rgba(0,0,0,.08)}
+  h1{font-size:22px;color:#0f172a;margin-bottom:6px}
+  .sub{font-size:13px;color:#64748b;margin-bottom:20px}
+  .info{background:#dbeafe;border:1px solid #93c5fd;border-radius:8px;padding:14px;margin-bottom:18px;font-size:13px;color:#1e3a8a;line-height:1.7}
+  .row{display:flex;gap:10px;margin-bottom:16px}
+  .btn{flex:1;padding:14px;border:none;border-radius:10px;font:600 14px 'Sarabun';cursor:pointer;transition:all .15s}
+  .btn-go{background:#2563eb;color:#fff}
+  .btn-go:hover{background:#1d4ed8;transform:translateY(-1px)}
+  .btn-go:disabled{background:#cbd5e1;cursor:not-allowed;transform:none}
+  .btn-warn{background:#fee2e2;color:#dc2626;border:1px solid #fca5a5}
+  .progress{height:8px;background:#f1f5f9;border-radius:99px;overflow:hidden;margin-bottom:14px}
+  .progress-fill{height:100%;background:linear-gradient(90deg,#1e40af,#60a5fa);transition:width .25s ease}
+  .log{background:#0f172a;color:#94a3b8;font:12px ui-monospace,Menlo,monospace;padding:14px;border-radius:8px;height:340px;overflow-y:auto;line-height:1.55}
+  .log .ok{color:#34d399}
+  .log .info{color:#60a5fa;background:none;border:none;padding:0;margin:0;font-size:12px}
+  .log .err{color:#f87171}
+  .stat{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  .stat>div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;text-align:center}
+  .stat strong{display:block;font-size:20px;color:#0f172a;line-height:1}
+  .stat span{font-size:10px;color:#64748b;margin-top:4px;display:block;letter-spacing:.04em}
+</style>
+<script src="auth-gate.js"></script>
+</head>
+<body>
+<div class="card">
+  <a href="index.html" style="display:inline-block;margin-bottom:14px;color:#64748b;text-decoration:none;font-size:14px;font-weight:600;">← กลับไปหน้าเครื่องมือ</a>
+  <h1>🏘️ Seed Home Data</h1>
+  <div class="sub">100 ผู้สำรวจ · 3 ครัวเรือน/คน · 1-4 คน/บ้าน — สุ่ม trip ต่อคน</div>
+
+  <div class="info">
+    <strong>จะสร้าง:</strong> 300 households + ~750 members + ~2,250 trips (~3,300 docs)<br>
+    เขียนตรงไปยัง Firestore (subcollection structure)<br>
+    rules: create/update if true — ไม่ต้อง login
+  </div>
+
+  <div class="stat">
+    <div><strong id="cHh">0</strong><span>HOUSEHOLDS</span></div>
+    <div><strong id="cM">0</strong><span>MEMBERS</span></div>
+    <div><strong id="cT">0</strong><span>TRIPS</span></div>
+    <div><strong id="cW">0</strong><span>WRITES</span></div>
+  </div>
+
+  <div class="progress"><div class="progress-fill" id="bar" style="width:0%"></div></div>
+
+  <div class="row">
+    <button class="btn btn-go" id="goBtn" onclick="run()">▶ เริ่ม seed</button>
+    <button class="btn btn-warn" onclick="clearLog()">ล้าง log</button>
+  </div>
+
+  <div class="log" id="log"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+const cfg = {
+  apiKey:'PASTE_API_KEY',
+  authDomain:'PASTE_PROJECT_ID.firebaseapp.com',
+  projectId:'PASTE_PROJECT_ID',
+  storageBucket:'PASTE_PROJECT_ID.firebasestorage.app',
+  messagingSenderId:'PASTE_SENDER_ID',
+  appId:'PASTE_APP_ID'
+};
+if (!firebase.apps.length) firebase.initializeApp(cfg);
+const db = firebase.firestore();
+
+const logEl=document.getElementById('log');
+const bar=document.getElementById('bar');
+const cHh=document.getElementById('cHh');
+const cM=document.getElementById('cM');
+const cT=document.getElementById('cT');
+const cW=document.getElementById('cW');
+const goBtn=document.getElementById('goBtn');
+const log=(m,cls='info')=>{const t=new Date().toLocaleTimeString('th-TH');logEl.innerHTML+=`<div class="${cls}">[${t}] ${m}</div>`;logEl.scrollTop=logEl.scrollHeight};
+const clearLog=()=>logEl.innerHTML='';
+
+// ===== Data dictionaries =====
+const FNAMES_M = ['สมชาย','สมศักดิ์','วิชัย','อนุชา','ประเสริฐ','สุรชัย','พงษ์ศักดิ์','ธีระ','มานพ','ปรีชา','สิทธิชัย','สุทัศน์','สมหมาย','บุญเลิศ','สมพร'];
+const FNAMES_F = ['สมหญิง','ปราณี','ดวงใจ','สุดารัตน์','วรรณา','รัตนา','พรรณี','มาลี','นงลักษณ์','จันทร์เพ็ญ','อรุณี','สุพรรณ','บุญมา','วิไล','สุนีย์'];
+const LNAMES = ['ใจดี','รักษ์ดี','มั่นคง','แสนสุข','ศรีสุข','ทองดี','สุขสมบูรณ์','พรหมเทพ','ศรีบุญเรือง','สุวรรณา','จันทร์โสภา','คำมณี','แก้วบัวดี','สีหา','พันธุ์ทอง','อินทรา'];
+
+const SUBDISTS = ['เทศบาลเมืองบ้านไผ่','องค์การบริหารส่วนตำบลในเมือง','องค์การบริหารส่วนตำบลเมืองเพีย','องค์การบริหารส่วนตำบลบ้านลาน','องค์การบริหารส่วนตำบลแคนเหนือ','องค์การบริหารส่วนตำบลภูเหล็ก','องค์การบริหารส่วนตำบลป่าปอ','องค์การบริหารส่วนตำบลหินตั้ง','องค์การบริหารส่วนตำบลหนองน้ำใส','องค์การบริหารส่วนตำบลขามเรียง'];
+const RESTYPE = ['บ้านเดี่ยว','ตึกแถว','ทาวน์เฮ้าส์','คอนโดมิเนียม / แฟลต'];
+const ROADS   = ['เทศบาล 1','เทศบาล 2','มิตรภาพ','เพชรเกษม','ทล.2','ทล.229','ทล.23'];
+// รายได้ = ตัวเลขล้วน (แอปเก็บ householdIncome เป็น number, member income เป็น string ของตัวเลข)
+
+// ===== ทุกชุดต้องตรงกับ OPT ใน Home/js/data.js =====
+const OCCUPATIONS = ['ครู / อาจารย์','ข้าราชการ / รัฐวิสาหกิจ','เจ้าของกิจการ / บริษัท','พนักงานบริษัท / ห้างร้าน / ธนาคาร','ลูกจ้าง / คนงาน / พนักงานโรงงาน','พนักงานขับรถ','เกษตรกร / ประมง / เลี้ยงสัตว์','ช่างฝีมือ / ช่างผลิต','ผู้ปฏิบัติงานวิชาชีพ','แม่บ้าน / พ่อบ้าน','ข้าราชการบำนาญ','อื่น ๆ'];
+const EDUCATIONS  = ['ต่ำกว่าประถมศึกษา / ไม่ได้เรียน','ประถมศึกษา (ป.1–ป.6)','มัธยมศึกษา (ม.1–ม.6)','อนุปริญญา / ปวช. / ปวส.','ปริญญาตรี','สูงกว่าปริญญาตรี'];
+const HOME_STATUS = ['เจ้าบ้านผู้หญิง','ลูก','ญาติ','ผู้อยู่อาศัย / ลูกจ้าง'];
+const WORK_STATUS = ['ทำงาน','ว่างงาน (ยังหางานทำไม่ได้)','ไม่ทำงาน (อยู่บ้านเฉย ๆ)','อื่น ๆ'];
+
+const LOC_TYPES = ['ที่พัก / บ้านของตัวเอง','โรงเรียน / สถานศึกษา','สถานที่ราชการ / โรงพยาบาล','บริษัทเอกชน / ห้าง / ธนาคาร','ตลาด / ร้านค้า / ร้านอาหาร / ที่รับจ้างหรือบริการต่าง ๆ','โรงงาน / โกดัง / คลังสินค้า','ที่ทำงานเกษตรกรรม / สวน / ไร่ / นา / กสิกรรม','สถานที่ท่องเที่ยว / ออกกำลังกาย','วัด / โบสถ์ / มัสยิด / ศาลเจ้า','บ้านที่ไม่ใช่ของตัวเอง','อื่น ๆ'];
+const PURPOSES  = ['กลับบ้าน','ไปทำงาน','ไปเรียนหนังสือ','ติดต่อราชการต่าง ๆ / ธุรกิจ','ไปโรงพยาบาล / คลินิก / อนามัย','รับส่งคน หรือ สินค้า','ช้อปปิ้ง / ซื้อของใช้ต่าง ๆ','รับประทานอาหาร','ท่องเที่ยว / พักผ่อน / ออกกำลังกาย','ทำกิจกรรมทางศาสนา','อื่น ๆ'];
+const MODES     = ['เดิน','รถจักรยานสองล้อถีบ','รถสามล้อถีบ','รถจักรยานยนต์ส่วนตัว','รถจักรยานยนต์รับจ้าง','รถสามล้อเครื่อง / แท็กซี่','รถสองแถว / รถประจำทาง','รถยนต์นั่งส่วนบุคคล (รถเก๋ง / ปิ๊กอัพ)','ซ้อนรถจักรยานยนต์','อาศัยไปกับรถยนต์ของผู้อื่น','รถส่วนบุคคลรับจ้าง','รถโรงเรียน','รถบริษัท / ที่ทำงาน / ราชการ','รถไฟ','อื่น ๆ'];
+
+const PLACES_BANPHAI = ['ตลาดเช้าบ้านไผ่','รพ.บ้านไผ่','เทศบาลบ้านไผ่','โรงเรียนบ้านไผ่ศึกษา','ที่ทำการอำเภอ','บ.ในเมือง','บ.หินตั้ง','สถานีรถไฟบ้านไผ่','BIG-C บ้านไผ่'];
+
+const pick=(a)=>a[Math.floor(Math.random()*a.length)];
+const randInt=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const rand2=()=>`${(16.0+Math.random()*0.15).toFixed(6)}, ${(102.7+Math.random()*0.15).toFixed(6)}`;
+const padId=(n,w=4)=>String(n).padStart(w,'0');
+const surveyorName=(i)=>`${pick(FNAMES_M.concat(FNAMES_F))} ${pick(LNAMES)} #${padId(i+1,3)}`;
+
+function makeMember(hhId, seq) {
+  const isMale = Math.random() < 0.5;
+  const age = randInt(5, 75);
+  const isStudent = age < 25;
+  const id = `M-SEED-${hhId}-${seq}`;
+  // income: string ของตัวเลข หรือ 'ไม่ระบุ' (ตรงกับที่แอปบันทึก)
+  const income = isStudent
+    ? (Math.random() < 0.6 ? 'ไม่ระบุ' : String(randInt(0, 6) * 1000))
+    : (Math.random() < 0.1 ? 'ไม่ระบุ' : String(randInt(8, 60) * 1000));
+  return {
+    id, householdId: hhId, seq,
+    gender: isMale ? 'ชาย' : 'หญิง',
+    age: String(age),
+    homeStatus: seq===1 ? 'เจ้าบ้านผู้ชาย' : pick(HOME_STATUS),
+    workStatus: isStudent ? 'เรียนหนังสือ' : pick(WORK_STATUS),
+    occupation: isStudent ? 'นักเรียน / นักศึกษา' : pick(OCCUPATIONS),
+    education: pick(EDUCATIONS),
+    workplaceName: isStudent ? pick(['โรงเรียนบ้านไผ่ศึกษา','โรงเรียนชุมชนบ้านไผ่','รพ.สต.บ้านไผ่']) : pick(['บ.ABC จก.','สนง.เทศบาลบ้านไผ่','รพ.บ้านไผ่','โรงงานน้ำตาลบ้านไผ่','']),
+    workplaceAlley: '',
+    workplaceRoad: pick(ROADS),
+    workplaceSubdistrict: pick(SUBDISTS),
+    workplaceDistrict: 'บ้านไผ่',
+    workplaceProvince: 'ขอนแก่น',
+    income
+  };
+}
+
+function makeTrip(hhId, mId, seq, isLast) {
+  const purpose = isLast ? 'กลับบ้าน' : pick(PURPOSES.filter(p=>p!=='กลับบ้าน'));
+  const hour = seq===1 ? randInt(6, 9) : isLast ? randInt(16, 19) : randInt(10, 15);
+  const dur  = randInt(15, 90);
+  const arr  = (hour*60 + dur) % (24*60);
+  const fmt  = (m)=>`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+  const numSeg = Math.random() < 0.7 ? 1 : Math.random() < 0.5 ? 2 : 3;
+  const segments = [];
+  for (let i = 0; i < numSeg; i++) {
+    segments.push({ mode: pick(MODES), duration: String(randInt(5, 45)), fare: String(randInt(0, 50)) });
+  }
+  return {
+    id: `T-SEED-${hhId}-${mId}-${seq}`,
+    memberId: mId, householdId: hhId, seq,
+    origin: pick(PLACES_BANPHAI), originCoords: rand2(), originType: pick(LOC_TYPES),
+    departureTime: `${String(hour).padStart(2,'0')}:00`,
+    destination: pick(PLACES_BANPHAI), destinationCoords: rand2(), destinationType: pick(LOC_TYPES),
+    arrivalTime: fmt(arr),
+    purpose, segments,
+    parkingLocation: '', parkingFee: ''
+  };
+}
+
+async function run() {
+  goBtn.disabled = true;
+  clearLog();
+  log('🏘️ เริ่ม seed Home...', 'info');
+
+  let hhCount = 0, mCount = 0, tCount = 0, writes = 0;
+  const CHUNK = 400;
+  const TOTAL_EST = 300 + 750 + 2250; // rough
+
+  // 100 surveyors × 3 households
+  for (let s = 0; s < 100; s++) {
+    const sName = surveyorName(s);
+    let batch = db.batch(); let ops = 0;
+
+    for (let h = 0; h < 3; h++) {
+      const hhId = `HH-SEED-${padId(s+1,3)}-${h+1}`;
+      const sub  = pick(SUBDISTS);
+      const houseNo = `${randInt(1,499)}/${randInt(1,9)}`;
+      const hasVehicle = Math.random() < 0.85 ? 'มี' : 'ไม่มี';
+      // schema: vehicles[key] = { private, company, gov } (object ไม่ใช่ตัวเลข)
+      // เก็บเฉพาะประเภทที่มีจำนวน > 0 เหมือนที่แอปบันทึกจริง
+      const vehicles = {};
+      if (hasVehicle === 'มี') {
+        const v = { motorcycle: randInt(0,2), car: randInt(0,2), pickup: randInt(0,1) };
+        Object.entries(v).forEach(([k, n]) => { if (n > 0) vehicles[k] = { private: n, company: 0, gov: 0 }; });
+        // กันกรณีสุ่มได้ 0 ทุกประเภท แต่ระบุว่า "มี" → ใส่มอเตอร์ไซค์ 1 คัน
+        if (!Object.keys(vehicles).length) vehicles.motorcycle = { private: 1, company: 0, gov: 0 };
+      }
+      const hh = {
+        id: hhId,
+        surveyDate: new Date().toISOString().split('T')[0],
+        travelDate: new Date().toISOString().split('T')[0],
+        surveyorName: sName, supervisorName: 'สมศักดิ์ ผู้ควบคุม',
+        subdistrict: sub, district: 'บ้านไผ่', province: 'ขอนแก่น',
+        areaCode: `BP-${padId(s*3+h+1,4)}`,
+        houseNo, moo: String(randInt(1,15)),
+        alley: Math.random()<0.3 ? `ซอย ${randInt(1,12)}` : '',
+        road: pick(ROADS), phone: `08${randInt(10000000,99999999)}`,
+        coordinates: rand2(),
+        residentialType: pick(RESTYPE),
+        memberGrid: {
+          m_study: randInt(0,1), m_work: randInt(0,2), m_notw: randInt(0,1),
+          f_study: randInt(0,1), f_work: randInt(0,2), f_notw: randInt(0,1),
+          m_child: 0, f_child: 0
+        },
+        householdIncome: randInt(10, 120) * 1000,
+        hasVehicle,
+        vehicles,
+        createdAt: new Date().toISOString()
+      };
+      const hhRef = db.collection('households').doc(hhId);
+      batch.set(hhRef, hh, { merge: true });
+      ops++; writes++; hhCount++;
+
+      // 1-4 members
+      const numM = randInt(1, 4);
+      for (let mi = 0; mi < numM; mi++) {
+        const m = makeMember(hhId, mi+1);
+        const mRef = hhRef.collection('members').doc(m.id);
+        batch.set(mRef, m, { merge: true });
+        ops++; writes++; mCount++;
+
+        // 1-4 trips (เฉลี่ย 3)
+        const numT = randInt(1, 4);
+        for (let ti = 0; ti < numT; ti++) {
+          const t = makeTrip(hhId, m.id, ti+1, ti===numT-1);
+          const tRef = mRef.collection('trips').doc(t.id);
+          batch.set(tRef, t, { merge: true });
+          ops++; writes++; tCount++;
+        }
+
+        if (ops >= CHUNK) { await batch.commit(); batch = db.batch(); ops = 0; }
+      }
+    }
+    if (ops > 0) await batch.commit();
+
+    cHh.textContent = hhCount; cM.textContent = mCount; cT.textContent = tCount; cW.textContent = writes;
+    bar.style.width = Math.min(100, Math.round(writes / TOTAL_EST * 100)) + '%';
+    if ((s+1) % 10 === 0) log(`  ↳ surveyor ${s+1}/100 — รวม ${writes} writes`, 'ok');
+  }
+
+  bar.style.width = '100%';
+  log(`🎉 เสร็จสิ้น — ${hhCount} hh + ${mCount} members + ${tCount} trips = ${writes} writes`, 'ok');
+  goBtn.disabled = false;
+}
+</script>
+</body>
+</html>

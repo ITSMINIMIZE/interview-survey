@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Seed Roadside — 3 stations × 6 surveyors × 60 interviews</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Sarabun',sans-serif}
+  body{background:linear-gradient(160deg,#fff7e6,#fef3c7,#f8fafc);min-height:100vh;padding:24px}
+  .card{max-width:720px;margin:0 auto;background:#fff;border-radius:16px;padding:28px;box-shadow:0 8px 40px rgba(0,0,0,.08)}
+  h1{font-size:22px;color:#0f172a;margin-bottom:6px}
+  .sub{font-size:13px;color:#64748b;margin-bottom:20px}
+  .info{background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:14px;margin-bottom:18px;font-size:13px;color:#78350f;line-height:1.7}
+  .row{display:flex;gap:10px;margin-bottom:16px}
+  .btn{flex:1;padding:14px;border:none;border-radius:10px;font:600 14px 'Sarabun';cursor:pointer;transition:all .15s}
+  .btn-go{background:#d97706;color:#fff}
+  .btn-go:hover{background:#b45309;transform:translateY(-1px)}
+  .btn-go:disabled{background:#cbd5e1;cursor:not-allowed;transform:none}
+  .btn-warn{background:#fee2e2;color:#dc2626;border:1px solid #fca5a5}
+  .progress{height:8px;background:#f1f5f9;border-radius:99px;overflow:hidden;margin-bottom:14px}
+  .progress-fill{height:100%;background:linear-gradient(90deg,#92400e,#fbbf24);transition:width .25s ease}
+  .log{background:#0f172a;color:#94a3b8;font:12px ui-monospace,Menlo,monospace;padding:14px;border-radius:8px;height:300px;overflow-y:auto;line-height:1.55}
+  .log .ok{color:#34d399}
+  .log .info{color:#60a5fa;background:none;border:none;padding:0;margin:0;font-size:12px}
+  .log .err{color:#f87171}
+  .stat{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  .stat>div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;text-align:center}
+  .stat strong{display:block;font-size:22px;color:#0f172a;line-height:1}
+  .stat span{font-size:11px;color:#64748b;margin-top:4px;display:block;letter-spacing:.04em}
+</style>
+<script src="auth-gate.js"></script>
+</head>
+<body>
+<div class="card">
+  <a href="index.html" style="display:inline-block;margin-bottom:14px;color:#64748b;text-decoration:none;font-size:14px;font-weight:600;">← กลับไปหน้าเครื่องมือ</a>
+  <h1>🌱 Seed Roadside Data</h1>
+  <div class="sub">3 จุดสำรวจ · 6 ผู้สำรวจ/จุด · 60 ราย/คน — รอบบ้านไผ่ ขอนแก่น</div>
+
+  <div class="info">
+    <strong>จะสร้าง:</strong> 3 stations + 1,080 interviews (เช้า 30 + บ่าย 30 / คน)<br>
+    เขียนตรงไปยัง Firestore subcollection (ไม่ผ่าน localStorage เพื่อกัน quota เกิน)<br>
+    ใช้ rules ปัจจุบัน: create/update if true — ไม่ต้อง login
+  </div>
+
+  <div class="stat">
+    <div><strong id="cStations">0</strong><span>STATIONS</span></div>
+    <div><strong id="cInterviews">0</strong><span>INTERVIEWS</span></div>
+    <div><strong id="cWrites">0</strong><span>WRITES</span></div>
+  </div>
+
+  <div class="progress"><div class="progress-fill" id="bar" style="width:0%"></div></div>
+
+  <div class="row">
+    <button class="btn btn-go" id="goBtn" onclick="run()">▶ เริ่ม seed</button>
+    <button class="btn btn-warn" onclick="clearLog()">ล้าง log</button>
+  </div>
+
+  <div class="log" id="log"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+const cfg = {
+  apiKey:'PASTE_API_KEY',
+  authDomain:'PASTE_PROJECT_ID.firebaseapp.com',
+  projectId:'PASTE_PROJECT_ID',
+  storageBucket:'PASTE_PROJECT_ID.firebasestorage.app',
+  messagingSenderId:'PASTE_SENDER_ID',
+  appId:'PASTE_APP_ID'
+};
+if (!firebase.apps.length) firebase.initializeApp(cfg);
+const db = firebase.firestore();
+
+const logEl = document.getElementById('log');
+const bar   = document.getElementById('bar');
+const cStations = document.getElementById('cStations');
+const cInterviews = document.getElementById('cInterviews');
+const cWrites = document.getElementById('cWrites');
+const goBtn = document.getElementById('goBtn');
+
+const log = (msg, cls='info') => {
+  const time = new Date().toLocaleTimeString('th-TH');
+  logEl.innerHTML += `<div class="${cls}">[${time}] ${msg}</div>`;
+  logEl.scrollTop = logEl.scrollHeight;
+};
+const clearLog = () => logEl.innerHTML = '';
+
+// ===== Data definitions =====
+const STATIONS = [
+  { id:'RS-SEED-MB01', name:'จุด MB01 — ทล.2 บ้านไผ่-โคราช', road:'ทล.2', direction:'เหนือ–ใต้', coords:'16.0578, 102.7321', sub:'ในเมือง', dist:'บ้านไผ่', prov:'ขอนแก่น' },
+  { id:'RS-SEED-MB02', name:'จุด MB02 — ทล.229 บ้านไผ่-มัญจาคีรี', road:'ทล.229', direction:'ตะวันออก–ตะวันตก', coords:'16.0623, 102.7405', sub:'หินตั้ง', dist:'บ้านไผ่', prov:'ขอนแก่น' },
+  { id:'RS-SEED-MB03', name:'จุด MB03 — ทล.23 บ้านไผ่-บรบือ', road:'ทล.23', direction:'ตะวันออก–ตะวันตก', coords:'16.0512, 102.7188', sub:'เมืองเพีย', dist:'บ้านไผ่', prov:'ขอนแก่น' }
+];
+
+const SURVEYORS = [
+  'สมชาย ใจดี','สมหญิง รักษ์ดี','วิชัย มั่นคง','ปราณี แสนสุข',
+  'อนุชา ศรีสุข','ดวงใจ ทองดี'
+];
+
+// key ต้องตรงกับ OPT.vehicleTypes ในแอป (Roadside/js/data.js) — มิฉะนั้น export นับไม่เจอ
+const VEHICLE_TYPES = ['bicycle2','bicycle3','motorcycle','tuk3','car','bus_sm','bus_lg','truck4','truck6'];
+const VT_GROUP = { bicycle2:'personal', bicycle3:'personal', motorcycle:'personal', tuk3:'personal', car:'personal', bus_sm:'bus', bus_lg:'bus', truck4:'truck', truck6:'truck' };
+
+// ===== ทุกชุดต้องตรงกับ OPT ใน Roadside/js/data.js (locationType / purpose / cargoTypes) =====
+const LOC_TYPES = ['ที่พัก / บ้านของตัวเอง','โรงเรียน / สถานศึกษา','สถานที่ราชการ / โรงพยาบาล','บริษัทเอกชน / ห้าง / ธนาคาร','ตลาด / ร้านค้า / ร้านอาหาร / ที่รับจ้างหรือบริการต่าง ๆ','โรงงาน / โกดัง / คลังสินค้า','ที่ทำงานเกษตรกรรม / สวน / ไร่ / นา / กสิกรรม','สถานที่ท่องเที่ยว / ออกกำลังกาย','วัด / โบสถ์ / มัสยิด / ศาลเจ้า','บ้านที่ไม่ใช่ของตัวเอง','อื่น ๆ'];
+const PURPOSES = ['กลับบ้าน','ไปทำงาน','ไปเรียนหนังสือ','ติดต่อราชการต่าง ๆ / ธุรกิจ','ไปโรงพยาบาล / คลินิก / อนามัย','รับส่งคน หรือ สินค้า','ช้อปปิ้ง / ซื้อของใช้ต่าง ๆ','รับประทานอาหาร','ท่องเที่ยว / พักผ่อน / ออกกำลังกาย','ทำกิจกรรมทางศาสนา','อื่น ๆ'];
+const CARGO = ['ข้าว','ข้าวเปลือก','มันสำปะหลังและผลิตภัณฑ์','อ้อย','น้ำตาล','ยางพาราและผลิตภัณฑ์ยาง','ปุ๋ย','ไม้','วัสดุก่อสร้าง','ผลิตภัณฑ์อาหาร','เครื่องดื่ม','เครื่องจักร','เคมีภัณฑ์ (สารเคมี)'];
+
+// สถานที่ในพื้นที่บ้านไผ่ + นอกพื้นที่ + ผ่าน
+const PLACES_LOCAL = ['ตลาดเช้าบ้านไผ่','รพ.บ้านไผ่','โรงเรียนบ้านไผ่ศึกษา','เทศบาลบ้านไผ่','บ.หินตั้ง','บ.เมืองเพีย','บ.ในเมือง','บ.แคนเหนือ','บ.ภูเหล็ก','บ.ป่าปอ','สถานีรถไฟบ้านไผ่','ปั๊ม PT บ้านไผ่'];
+const PLACES_OUT   = ['ขอนแก่น','โคราช','มหาสารคาม','ชัยภูมิ','มัญจาคีรี','บรบือ','พล','เปือยน้อย','ชนบท','บ้านแฮด','โกสุมพิสัย','กระนวน'];
+
+const pick = (arr) => arr[Math.floor(Math.random()*arr.length)];
+const randInt = (a,b) => a + Math.floor(Math.random()*(b-a+1));
+const rand2 = (lat, lon) => `${(lat + (Math.random()-0.5)*0.1).toFixed(6)}, ${(lon + (Math.random()-0.5)*0.1).toFixed(6)}`;
+
+// OD pattern แบบสุ่ม:
+// 1) ภายในพื้นที่ → ภายในพื้นที่
+// 2) ภายในพื้นที่ → ออกนอกพื้นที่
+// 3) ออกนอกพื้นที่ → ภายในพื้นที่
+// 4) ผ่านพื้นที่ (ออก → ออก)
+function pickOD() {
+  const r = Math.random();
+  if (r < 0.35)  return { from:pick(PLACES_LOCAL), to:pick(PLACES_LOCAL), fromIn:true, toIn:true };
+  if (r < 0.60)  return { from:pick(PLACES_LOCAL), to:pick(PLACES_OUT),   fromIn:true, toIn:false };
+  if (r < 0.85)  return { from:pick(PLACES_OUT),   to:pick(PLACES_LOCAL), fromIn:false,toIn:true };
+  return            { from:pick(PLACES_OUT),       to:pick(PLACES_OUT),   fromIn:false,toIn:false };
+}
+
+const incomes = ['ไม่มีรายได้','น้อยกว่า 9,000','9,000-15,000','15,000-25,000','25,000-50,000','มากกว่า 50,000',''];
+
+function makeInterview(stId, st, surveyorName, seq, hour, min) {
+  const vt = pick(VEHICLE_TYPES);
+  const isTruck = VT_GROUP[vt] === 'truck';
+  const od = pickOD();
+  const hasCargo = isTruck ? (Math.random() < 0.7 ? 'มีสินค้า' : 'ไม่มีสินค้า') : '';
+  const time = `${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
+  const date = new Date(); date.setHours(7,0,0,0);
+  return {
+    id: `IV-SEED-${stId}-${surveyorName.replace(/\s+/g,'')}-${seq}`,
+    stationId: stId,
+    seq,
+    surveyorName,
+    interviewDate: date.toISOString().split('T')[0],
+    interviewTime: time,
+    vehicleType: vt,
+    passengerCount: VT_GROUP[vt]==='bus' ? randInt(8,30) : (vt==='car' ? randInt(1,5) : randInt(1,3)),
+    travelDirection: pick(['มุ่งทิศเหนือ','มุ่งทิศใต้','มุ่งทิศตะวันออก','มุ่งทิศตะวันตก']),
+    originType: pick(LOC_TYPES),
+    originName: od.from,
+    originCoords: rand2(16.06, 102.73),
+    destinationType: pick(LOC_TYPES),
+    destinationName: od.to,
+    destinationCoords: rand2(16.06, 102.73),
+    purpose: pick(PURPOSES),
+    hasCargo,
+    cargoType: hasCargo==='มีสินค้า' ? pick(CARGO) : '',
+    cargoWeight: hasCargo==='มีสินค้า' ? String(randInt(500, 30000)) : '',
+    driverIncome: pick(incomes),
+    createdAt: new Date().toISOString()
+  };
+}
+
+async function run() {
+  goBtn.disabled = true;
+  clearLog();
+  log('🌱 เริ่ม seed Roadside...', 'info');
+
+  let writes = 0, stations = 0, interviews = 0;
+  const CHUNK = 400;
+
+  for (const st of STATIONS) {
+    // 1) station doc
+    const stData = {
+      id: st.id, stationName: st.name, stationCode: st.name.split(' ')[1] || st.id,
+      road: st.road, direction: st.direction, coordinates: st.coords,
+      subdistrict: st.sub, district: st.dist, province: st.prov,
+      surveyDate: new Date().toISOString().split('T')[0],
+      surveyorName: 'admin', supervisorName: 'admin',
+      createdAt: new Date().toISOString()
+    };
+    await db.collection('roadside_stations').doc(st.id).set(stData, { merge: true });
+    stations++; writes++;
+    cStations.textContent = stations;
+    cWrites.textContent = writes;
+    log(`✓ station ${st.name}`, 'ok');
+
+    // 2) interviews: 6 surveyors × 60 ราย
+    for (const sv of SURVEYORS) {
+      let batch = db.batch();
+      let ops = 0;
+      let seq = 1;
+      // เช้า 7-10 = 30 ราย (1 ทุก 6 นาที)
+      for (let i = 0; i < 30; i++) {
+        const total = i * 6;
+        const hr = 7 + Math.floor(total / 60);
+        const min = total % 60;
+        const iv = makeInterview(st.id, st, sv, seq++, hr, min);
+        const ref = db.collection('roadside_stations').doc(st.id).collection('interviews').doc(iv.id);
+        batch.set(ref, iv, { merge: true });
+        ops++;
+        if (ops >= CHUNK) { await batch.commit(); batch = db.batch(); ops = 0; }
+        interviews++; writes++;
+      }
+      // บ่าย 15-18 = 30 ราย
+      for (let i = 0; i < 30; i++) {
+        const total = i * 6;
+        const hr = 15 + Math.floor(total / 60);
+        const min = total % 60;
+        const iv = makeInterview(st.id, st, sv, seq++, hr, min);
+        const ref = db.collection('roadside_stations').doc(st.id).collection('interviews').doc(iv.id);
+        batch.set(ref, iv, { merge: true });
+        ops++;
+        if (ops >= CHUNK) { await batch.commit(); batch = db.batch(); ops = 0; }
+        interviews++; writes++;
+      }
+      if (ops > 0) await batch.commit();
+      cInterviews.textContent = interviews;
+      cWrites.textContent = writes;
+      bar.style.width = Math.round(writes / 1083 * 100) + '%';
+      log(`  ↳ ${sv}: 60 ราย`, 'ok');
+    }
+  }
+
+  bar.style.width = '100%';
+  log(`🎉 เสร็จสิ้น — ${stations} stations + ${interviews} interviews = ${writes} writes`, 'ok');
+  goBtn.disabled = false;
+}
+</script>
+</body>
+</html>
