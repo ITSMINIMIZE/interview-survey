@@ -521,6 +521,20 @@ const ProjectTools = {
 
   _formsApp: 'roadside',
   _optionsDoc: null,
+  _draft: null,          // ชุดที่กำลังแก้อยู่ (ยังไม่บันทึก)
+
+  // ชุดไอคอนให้เลือก — ครอบคลุมของที่ใช้จริงในงานสำรวจ
+  ICONS: {
+    vehicleTypes:      ['🚲','🛵','🛺','🚗','🛻','🚐','🚌','🚚','🚛','🚜','🚕','🏍️','🚙','🚓','🚑','🚒','🛴','🚈','⛴️','🚘'],
+    purposeCards:      ['🏠','💼','📚','🏛️','🏥','📦','🛒','🍽️','🏖️','⛩️','🎓','🏭','🌾','⚽','🎬','🏦','✈️','🚉','💊','❓'],
+    locationTypeCards: ['🏠','🏫','🏥','🏢','🛒','🏭','🌾','🏖️','⛩️','🏘️','🏬','🏨','🏦','🚉','✈️','🏟️','🌳','🅿️','🏪','📍']
+  },
+
+  KINDS: {
+    vehicleTypes:      { title: 'ประเภทรถ',                        label: 'ชื่อประเภทรถ' },
+    purposeCards:      { title: 'วัตถุประสงค์การเดินทาง',          label: 'ข้อความ' },
+    locationTypeCards: { title: 'ประเภทสถานที่ต้นทาง/ปลายทาง',    label: 'ข้อความ' }
+  },
 
   async _renderForms() {
     const app = this._formsApp;
@@ -528,8 +542,7 @@ const ProjectTools = {
       <div class="pt-hint">
         แก้ตัวเลือกที่ผู้สำรวจเห็นในแบบสอบถามของ<b>โครงการนี้เท่านั้น</b> —
         โครงการอื่นไม่กระทบ · ไม่แก้ = ใช้ชุดมาตรฐาน (ผังเมือง)<br>
-        ใช้ตอนโครงการมีชุดตัวเลือกต่างออกไป เช่น <b>ทางหลวงชนบท</b> ที่ประเภทรถและ
-        วัตถุประสงค์ไม่เหมือนงานผังเมือง
+        ใช้ตอนโครงการมีชุดตัวเลือกต่างออกไป เช่น <b>ทางหลวงชนบท</b>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:14px">
         <button class="pt-tab ${app==='roadside'?'on':''}" data-fapp="roadside">🚦 Roadside</button>
@@ -537,88 +550,212 @@ const ProjectTools = {
       </div>
       <div id="ptFormsBody"><div class="pt-empty">กำลังโหลด...</div></div>`;
     this._g('ptBody').querySelectorAll('[data-fapp]').forEach(b =>
-      b.onclick = () => { this._formsApp = b.dataset.fapp; this._renderForms(); });
+      b.onclick = () => { this._formsApp = b.dataset.fapp; this._draft = null; this._renderForms(); });
 
     try {
       const snap = await Project.cfg(db, 'options').get();
       this._optionsDoc = snap.exists ? snap.data() : {};
     } catch (_) { this._optionsDoc = {}; }
+    this._draft = null;
     this._renderFormsBody();
   },
 
-  // แปลงระหว่าง object list ↔ ข้อความ (แก้ในกล่องข้อความ ง่ายกว่าและจัดลำดับ/เพิ่ม/ลบได้ในที)
-  _toText(kind, arr) {
-    if (kind === 'vehicleTypes')      return arr.map(v => [v.key, v.label, v.icon, v.group||''].join(' | ')).join('\n');
-    if (kind === 'locationTypeCards') return arr.map(v => [v.icon, v.val, v.short||''].join(' | ')).join('\n');
-    return arr.map(v => [v.icon, v.val].join(' | ')).join('\n');
-  },
-  _fromText(kind, text) {
-    const rows = text.split('\n').map(l => l.trim()).filter(Boolean).map(l => l.split('|').map(x => x.trim()));
-    if (kind === 'vehicleTypes')
-      return rows.filter(r => r[0] && r[1]).map(r => ({ key:r[0], label:r[1], icon:r[2]||'🚘', group:r[3]||'personal' }));
-    if (kind === 'locationTypeCards')
-      return rows.filter(r => r[1]).map(r => ({ icon:r[0]||'📍', val:r[1], short:r[2]||r[1] }));
-    return rows.filter(r => r[1]).map(r => ({ icon:r[0]||'❓', val:r[1] }));
+  _kindsFor(app) {
+    // ประเภทรถของ Home แก้ไม่ได้ — ผูกกับกติกา modeRequiresVehicle (โหมดไหนต้องมีรถประเภทนั้นในบ้าน)
+    return app === 'roadside'
+      ? ['vehicleTypes', 'purposeCards', 'locationTypeCards']
+      : ['purposeCards', 'locationTypeCards'];
   },
 
-  _renderFormsBody() {
+  _buildDraft() {
     const app = this._formsApp;
     const cur = (this._optionsDoc && this._optionsDoc[app]) || {};
     const def = this.DEFAULTS[app] || this.DEFAULTS.roadside;
-    const box = (kind, title, hint, show) => show ? `
-      <div class="pt-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-          <div style="font-size:14px;font-weight:700;color:#f5f5f7">${title}
-            ${cur[kind] ? '<span style="font-size:11px;font-weight:600;color:#ffd60a;background:rgba(255,159,10,.15);border:1px solid rgba(255,159,10,.3);padding:2px 9px;border-radius:99px;margin-left:7px">แก้ไว้แล้ว</span>'
-                        : '<span style="font-size:11px;color:#8e8e93;margin-left:7px">ใช้ค่ามาตรฐาน</span>'}
-          </div>
-          <button class="pt-btn-g" data-reset="${kind}">คืนค่ามาตรฐาน</button>
-        </div>
-        <div style="font-size:11.5px;color:#8e8e93;line-height:1.7;margin-bottom:8px">${hint}</div>
-        <textarea id="ptOpt_${kind}" class="pt-in" style="min-height:150px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.9;resize:vertical">${this._esc(this._toText(kind, cur[kind] || def[kind] || []))}</textarea>
-      </div>` : '';
+    this._draft = {};
+    this._kindsFor(app).forEach(k => {
+      // clone ลึก — จะได้แก้ draft โดยไม่แตะค่ามาตรฐาน
+      this._draft[k] = JSON.parse(JSON.stringify(cur[k] || def[k] || []));
+    });
+  },
 
+  _renderFormsBody() {
+    if (!this._draft) this._buildDraft();
+    const app = this._formsApp;
+    const cur = (this._optionsDoc && this._optionsDoc[app]) || {};
     this._g('ptFormsBody').innerHTML =
-      box('vehicleTypes', 'ประเภทรถ',
-          'บรรทัดละ 1 อย่าง · <b>รหัส | ชื่อที่แสดง | ไอคอน | กลุ่ม</b> — กลุ่มใช้ได้: personal, bus, truck (กลุ่ม truck จะถามเรื่องสินค้าต่อ)<br>⚠️ <b>รหัสห้ามเปลี่ยนหลังเก็บข้อมูลแล้ว</b> เพราะข้อมูลเดิมอ้างถึงรหัสนี้',
-          app === 'roadside') +
-      box('purposeCards', 'วัตถุประสงค์การเดินทาง',
-          'บรรทัดละ 1 อย่าง · <b>ไอคอน | ข้อความ</b>', true) +
-      box('locationTypeCards', 'ประเภทสถานที่ต้นทาง/ปลายทาง',
-          'บรรทัดละ 1 อย่าง · <b>ไอคอน | ข้อความ | ชื่อย่อ</b> (ชื่อย่อใช้บนการ์ดในหน้ากรอกเร็ว)', true) +
+      this._kindsFor(app).map(k => `
+        <div class="pt-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+            <div style="font-size:14px;font-weight:700;color:#f5f5f7">${this.KINDS[k].title}
+              ${cur[k] ? '<span style="font-size:11px;font-weight:600;color:#ffd60a;background:rgba(255,159,10,.15);border:1px solid rgba(255,159,10,.3);padding:2px 9px;border-radius:99px;margin-left:7px">แก้ไว้แล้ว</span>'
+                       : '<span style="font-size:11px;color:#8e8e93;margin-left:7px">ใช้ค่ามาตรฐาน</span>'}
+            </div>
+            <button class="pt-btn-g" data-reset="${k}">คืนค่ามาตรฐาน</button>
+          </div>
+          ${k === 'vehicleTypes' ? '<div style="font-size:11.5px;color:#8e8e93;line-height:1.7;margin-bottom:10px">กลุ่ม <b>รถบรรทุก</b> จะถูกถามเรื่องสินค้าที่ขนส่งต่อ · <b>รหัส</b>ของรายการที่มีอยู่แล้วเปลี่ยนไม่ได้ เพราะข้อมูลที่เก็บไปแล้วอ้างถึงรหัสนี้</div>' : ''}
+          <div id="ptRows_${k}"></div>
+          <button class="pt-btn-g" data-add="${k}" style="margin-top:6px">➕ เพิ่มรายการ</button>
+        </div>`).join('') +
       `<button class="pt-btn" id="ptOptSave">บันทึกตัวเลือก</button>
-       <div class="pt-msg" id="ptOptMsg"></div>
-       ${app === 'home' ? '<div class="pt-hint" style="margin-top:14px">หมายเหตุ: ประเภทรถของ Home แก้ที่นี่ไม่ได้ เพราะผูกกับกติกา "โหมดเดินทางไหนต้องมีรถประเภทนั้นในบ้าน" ถ้าต้องแก้ให้บอกผู้พัฒนา</div>' : ''}`;
+       <div class="pt-msg" id="ptOptMsg"></div>`;
 
+    this._kindsFor(app).forEach(k => this._renderRows(k));
     this._g('ptOptSave').onclick = () => this._saveOptions();
+    this._g('ptFormsBody').querySelectorAll('[data-add]').forEach(b =>
+      b.onclick = () => this._addRow(b.dataset.add));
     this._g('ptFormsBody').querySelectorAll('[data-reset]').forEach(b =>
       b.onclick = () => {
-        const k = b.dataset.reset;
-        this._g('ptOpt_' + k).value = this._toText(k, (this.DEFAULTS[app] || this.DEFAULTS.roadside)[k] || []);
+        if (!confirm('คืน "' + this.KINDS[b.dataset.reset].title + '" กลับเป็นชุดมาตรฐาน?\nรายการที่แก้ไว้จะหายไป')) return;
+        const def = this.DEFAULTS[app] || this.DEFAULTS.roadside;
+        this._draft[b.dataset.reset] = JSON.parse(JSON.stringify(def[b.dataset.reset] || []));
+        this._renderRows(b.dataset.reset);
       });
+  },
+
+  _renderRows(kind) {
+    const rows = this._draft[kind] || [];
+    const isVeh = kind === 'vehicleTypes';
+    const saved = ((this._optionsDoc || {})[this._formsApp] || {})[kind] || [];
+    const savedKeys = new Set(saved.map(v => v.key));
+    const box = this._g('ptRows_' + kind);
+    if (!box) return;
+
+    box.innerHTML = rows.length ? rows.map((r, i) => `
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+        <button class="pt-btn-g" data-icon="${kind}:${i}" title="เลือกไอคอน"
+                style="font-size:18px;padding:5px 10px;min-width:44px">${this._esc(r.icon || '📍')}</button>
+        <input class="pt-in" style="flex:1;min-width:170px" data-f="${kind}:${i}:${isVeh?'label':'val'}"
+               value="${this._esc(isVeh ? (r.label||'') : (r.val||''))}" placeholder="${this.KINDS[kind].label}" />
+        ${isVeh ? `
+          <input class="pt-in" style="width:110px" data-f="${kind}:${i}:key" value="${this._esc(r.key||'')}"
+                 placeholder="รหัส" ${savedKeys.has(r.key) ? 'readonly title="รหัสนี้ถูกใช้เก็บข้อมูลไปแล้ว เปลี่ยนไม่ได้" style="width:110px;opacity:.6"' : ''} />
+          <select class="pt-in" style="width:130px" data-f="${kind}:${i}:group">
+            ${[['personal','ส่วนบุคคล'],['bus','รถโดยสาร'],['truck','รถบรรทุก']]
+              .map(([v,t]) => `<option value="${v}"${(r.group||'personal')===v?' selected':''}>${t}</option>`).join('')}
+          </select>` : ''}
+        ${kind === 'locationTypeCards' ? `
+          <input class="pt-in" style="width:130px" data-f="${kind}:${i}:short"
+                 value="${this._esc(r.short||'')}" placeholder="ชื่อย่อ" />` : ''}
+        <button class="pt-btn-g" data-mv="${kind}:${i}:-1" title="เลื่อนขึ้น" ${i===0?'disabled style="opacity:.3"':''}>↑</button>
+        <button class="pt-btn-g" data-mv="${kind}:${i}:1" title="เลื่อนลง" ${i===rows.length-1?'disabled style="opacity:.3"':''}>↓</button>
+        <button class="pt-btn-d" data-del="${kind}:${i}" title="ลบรายการนี้">ลบ</button>
+      </div>`).join('')
+      : '<div class="pt-empty">ยังไม่มีรายการ — กด "เพิ่มรายการ"</div>';
+
+    // พิมพ์แล้วเก็บลง draft เลย ไม่ re-render (ไม่งั้นเคอร์เซอร์เด้งทุกตัวอักษร)
+    box.querySelectorAll('[data-f]').forEach(el => {
+      el.oninput = el.onchange = () => {
+        const [k, i, f] = el.dataset.f.split(':');
+        this._draft[k][+i][f] = el.value;
+      };
+    });
+    box.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+      const [k, i] = b.dataset.del.split(':');
+      this._draft[k].splice(+i, 1);
+      this._renderRows(k);
+    });
+    box.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => {
+      const [k, i, d] = b.dataset.mv.split(':');
+      const a = this._draft[k], from = +i, to = from + (+d);
+      if (to < 0 || to >= a.length) return;
+      [a[from], a[to]] = [a[to], a[from]];
+      this._renderRows(k);
+    });
+    box.querySelectorAll('[data-icon]').forEach(b => b.onclick = () => {
+      const [k, i] = b.dataset.icon.split(':');
+      this._pickIcon(k, +i, b);
+    });
+  },
+
+  // จานไอคอน — เลือกจากที่ให้ หรือพิมพ์เองก็ได้
+  _pickIcon(kind, idx, anchor) {
+    document.getElementById('ptIconPop')?.remove();
+    const pop = document.createElement('div');
+    pop.id = 'ptIconPop';
+    pop.setAttribute('style',
+      'position:fixed;z-index:9500;background:#2c2c2e;border:1px solid rgba(255,255,255,.14);' +
+      'border-radius:12px;padding:12px;box-shadow:0 12px 34px rgba(0,0,0,.5);max-width:280px');
+    pop.innerHTML =
+      `<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px">
+        ${(this.ICONS[kind] || []).map(ic =>
+          `<button data-ic="${ic}" style="font-size:19px;background:#1c1c1e;border:1px solid #3a3a3c;border-radius:8px;padding:6px;cursor:pointer">${ic}</button>`).join('')}
+      </div>
+      <div style="margin-top:9px;display:flex;gap:6px;align-items:center">
+        <input id="ptIconCustom" class="pt-in" style="width:70px;text-align:center" maxlength="4" placeholder="อื่นๆ" />
+        <button class="pt-btn-g" id="ptIconOk">ใช้อันนี้</button>
+      </div>`;
+    document.body.appendChild(pop);
+    const r = anchor.getBoundingClientRect();
+    pop.style.left = Math.min(r.left, innerWidth - 300) + 'px';
+    pop.style.top  = Math.min(r.bottom + 6, innerHeight - pop.offsetHeight - 10) + 'px';
+
+    const set = ic => { this._draft[kind][idx].icon = ic; pop.remove(); this._renderRows(kind); };
+    pop.querySelectorAll('[data-ic]').forEach(b => b.onclick = () => set(b.dataset.ic));
+    pop.querySelector('#ptIconOk').onclick = () => {
+      const v = pop.querySelector('#ptIconCustom').value.trim();
+      if (v) set(v);
+    };
+    setTimeout(() => document.addEventListener('click', function h(e) {
+      if (!pop.contains(e.target) && e.target !== anchor) { pop.remove(); document.removeEventListener('click', h); }
+    }), 0);
+  },
+
+  _addRow(kind) {
+    const a = this._draft[kind];
+    if (kind === 'vehicleTypes') {
+      // รหัสต้องไม่ซ้ำ — ตั้งให้อัตโนมัติแล้วผู้ใช้แก้ได้ (เฉพาะรายการใหม่)
+      let n = a.length + 1, key;
+      do { key = 'v' + n++; } while (a.some(x => x.key === key));
+      a.push({ key, label: '', icon: '🚗', group: 'personal' });
+    } else if (kind === 'locationTypeCards') {
+      a.push({ val: '', icon: '📍', short: '' });
+    } else {
+      a.push({ val: '', icon: '❓' });
+    }
+    this._renderRows(kind);
+  },
+
+  // เทียบกับค่ามาตรฐานแบบไม่สนลำดับ key ของ object
+  _same(kind, a, b) {
+    const norm = arr => JSON.stringify((arr || []).map(r => kind === 'vehicleTypes'
+      ? [r.key, r.label, r.icon, r.group]
+      : kind === 'locationTypeCards' ? [r.icon, r.val, r.short] : [r.icon, r.val]));
+    return norm(a) === norm(b);
   },
 
   async _saveOptions() {
     const app = this._formsApp;
     const def = this.DEFAULTS[app] || this.DEFAULTS.roadside;
     const out = {};
-    for (const kind of ['vehicleTypes', 'purposeCards', 'locationTypeCards']) {
-      const el = this._g('ptOpt_' + kind);
-      if (!el) continue;
-      const arr = this._fromText(kind, el.value);
-      if (!arr.length) return this._msg('ptOptMsg', 'รายการ "' + kind + '" ว่าง — ต้องมีอย่างน้อย 1 บรรทัด', false);
-      // เหมือนค่ามาตรฐานเป๊ะ → ไม่ต้องเก็บ override (โครงการจะได้อัปเดตตามค่ามาตรฐานในอนาคต)
-      // เทียบผ่านรูปข้อความ ไม่ใช่ JSON ของ object — ลำดับ key ต่างกันไม่ควรนับว่าต่าง
-      const defText = this._toText(kind, def[kind] || []);
-      if (this._toText(kind, arr) !== defText) out[kind] = arr;
-    }
-    if (app === 'roadside' && out.vehicleTypes) {
-      const bad = out.vehicleTypes.filter(v => !['personal','bus','truck'].includes(v.group));
-      if (bad.length) return this._msg('ptOptMsg',
-        'กลุ่มต้องเป็น personal, bus หรือ truck เท่านั้น — ผิดที่: ' + bad.map(v=>v.key).join(', '), false);
-      const keys = out.vehicleTypes.map(v => v.key);
-      const dup = keys.filter((k,i) => keys.indexOf(k) !== i);
-      if (dup.length) return this._msg('ptOptMsg', 'รหัสประเภทรถซ้ำ: ' + [...new Set(dup)].join(', '), false);
+    for (const kind of this._kindsFor(app)) {
+      const arr = (this._draft[kind] || [])
+        .map(r => kind === 'vehicleTypes'
+          ? { key: (r.key||'').trim(), label: (r.label||'').trim(), icon: r.icon||'🚘', group: r.group||'personal' }
+          : kind === 'locationTypeCards'
+            ? { val: (r.val||'').trim(), icon: r.icon||'📍', short: (r.short||'').trim() || (r.val||'').trim() }
+            : { val: (r.val||'').trim(), icon: r.icon||'❓' });
+
+      const blank = arr.filter(r => kind === 'vehicleTypes' ? (!r.key || !r.label) : !r.val);
+      if (blank.length) return this._msg('ptOptMsg',
+        '"' + this.KINDS[kind].title + '" มีรายการที่ยังกรอกไม่ครบ ' + blank.length + ' รายการ — กรอกให้ครบหรือกดลบทิ้ง', false);
+      if (!arr.length) return this._msg('ptOptMsg',
+        '"' + this.KINDS[kind].title + '" ต้องมีอย่างน้อย 1 รายการ', false);
+
+      if (kind === 'vehicleTypes') {
+        const keys = arr.map(v => v.key);
+        const dup = [...new Set(keys.filter((k,i) => keys.indexOf(k) !== i))];
+        if (dup.length) return this._msg('ptOptMsg', 'รหัสประเภทรถซ้ำ: ' + dup.join(', '), false);
+        if (!/^[a-zA-Z0-9_]+$/.test(keys.join(''))) return this._msg('ptOptMsg',
+          'รหัสประเภทรถใช้ได้เฉพาะ a-z 0-9 และ _ (ห้ามเว้นวรรค/ภาษาไทย)', false);
+      }
+      const dupName = (() => {
+        const names = arr.map(r => kind === 'vehicleTypes' ? r.label : r.val);
+        return [...new Set(names.filter((n,i) => names.indexOf(n) !== i))];
+      })();
+      if (dupName.length) return this._msg('ptOptMsg',
+        '"' + this.KINDS[kind].title + '" มีชื่อซ้ำ: ' + dupName.join(', '), false);
+
+      if (!this._same(kind, arr, def[kind])) out[kind] = arr;
     }
     try {
       const doc = { ...(this._optionsDoc || {}) };
@@ -629,7 +766,8 @@ const ProjectTools = {
       const okText = Object.keys(out).length
         ? '✅ บันทึกแล้ว — ผู้สำรวจจะเห็นชุดใหม่เมื่อเปิดแอปครั้งถัดไป'
         : '✅ กลับไปใช้ชุดมาตรฐานทั้งหมดแล้ว';
-      this._renderFormsBody();          // วาดใหม่ก่อน (ล้าง ptOptMsg) แล้วค่อยแสดงผล
+      this._draft = null;
+      this._renderFormsBody();
       this._msg('ptOptMsg', okText, true);
     } catch (e) { this._msg('ptOptMsg', 'บันทึกไม่สำเร็จ: ' + e.message, false); }
   },
