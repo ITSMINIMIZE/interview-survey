@@ -59,6 +59,17 @@ function zFeatures() {
 }
 
 // โหลดโซนจาก Firestore: config/zones = meta {chunks}, config/zones_c0..n = ชิ้น JSON
+// ⚠️ Firestore get({source:'server'}) ไม่ reject เองเมื่อต่อเซิร์ฟเวอร์ไม่ได้ — มันรอไปเรื่อยๆ
+// ถ้าไม่ครอบ timeout ไว้ ผู้ใช้จะเห็นวงกลมหมุนค้างตลอดโดยไม่มีข้อความบอกอะไรเลย
+function withTimeout(promise, ms, what) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(
+      () => reject(new Error(`หมดเวลารอ${what} (${Math.round(ms/1000)} วิ) — เช็คอินเทอร์เน็ตแล้วกด 🔄 รีเฟรช`)),
+      ms))
+  ]);
+}
+
 async function loadCloudZones() {
   try {
     const meta = await Project.cfg(db, 'zones').get();
@@ -1234,12 +1245,14 @@ const App = {
   },
 
   async loadData() {
+    const errBox = document.getElementById('loadError');
+    if (errBox) errBox.style.display = 'none';
     this._showLoading('กำลังโหลดข้อมูล Home...');
     try {
-      await loadCloudZones();   // โซนจากระบบ (ถ้าเคยอัปโหลดผ่าน import-zones)
-      households = await pullHouseholds();
+      await withTimeout(loadCloudZones(), 20000, 'ข้อมูลโซน');   // โซนจากระบบ (ถ้าเคยอัปโหลดผ่าน import-zones)
+      households = await withTimeout(pullHouseholds(), 45000, 'ข้อมูล Home');
       this._setStatus('โหลด Home แล้ว · กำลังโหลด Roadside...');
-      stations   = await pullRoadside();
+      stations   = await withTimeout(pullRoadside(), 45000, 'ข้อมูล Roadside');
       const ivCnt = allInterviews().length;
       this._setStatus(`✓ ${households.length} ครัวเรือน · ${stations.length} จุดสำรวจ · ${ivCnt} สัมภาษณ์`
         + (isStaff() ? ' · เฉพาะทีมของคุณ' : ''));
@@ -1251,6 +1264,16 @@ const App = {
       this._setStatus('❌ โหลดข้อมูลไม่สำเร็จ: ' + e.message);
       this._statusDot(false);
       this._hideLoading();
+      // แจ้งกลางจอด้วย — ไม่งั้นหน้าจะว่างเปล่าแล้วผู้ใช้ไม่รู้ว่าเกิดอะไรขึ้น
+      const box = document.getElementById('loadError');
+      if (box) {
+        box.innerHTML = '<b>โหลดข้อมูลไม่สำเร็จ</b><br>' +
+          String(e.message || e).replace(/[<>]/g, '') +
+          '<br><button onclick="App.refresh()" style="margin-top:12px;background:var(--accent);color:#fff;' +
+          'border:none;font-family:inherit;font-size:13.5px;font-weight:600;padding:8px 18px;' +
+          'border-radius:7px;cursor:pointer">ลองใหม่</button>';
+        box.style.display = 'block';
+      }
     }
   },
 
