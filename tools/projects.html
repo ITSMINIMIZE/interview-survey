@@ -61,7 +61,7 @@
       <div>
         <label for="fId">รหัสโครงการ (ใช้ใน URL) *</label>
         <input id="fId" placeholder="banphai-2569" />
-        <div class="hint">a-z 0-9 และ - เท่านั้น · ตั้งแล้วเปลี่ยนไม่ได้</div>
+        <div class="hint">a-z 0-9 และ - เท่านั้น (ไปอยู่ใน URL และลิงก์ QR) · ชื่อภาษาไทยจะได้รหัสอัตโนมัติ · แก้เองได้ · <b>ตั้งแล้วเปลี่ยนไม่ได้</b></div>
       </div>
       <div>
         <label for="fStatus">สถานะ</label>
@@ -120,6 +120,20 @@
 // ===== จัดการโครงการ (admin เท่านั้น — auth-gate.js คุมอยู่) =====
 // โครงสร้าง: projects/{id} { name, area, status, memberUids[], createdAt, createdBy }
 // memberUids = uid ของ staff ที่ถูกแต่งตั้ง — ใช้ทั้งใน rules และหน้าเลือกโครงการ
+//
+// ⚠️ ต้อง initializeApp เองที่นี่ ห้ามพึ่ง auth-gate.js —
+//    auth-gate โหลดใน <head> จึงยังไม่มี document.body แล้วเลื่อนไป init ตอน
+//    DOMContentLoaded ซึ่งเกิด "หลัง" สคริปต์ก้อนนี้ → firebase.firestore()
+//    จะโยน error แล้วทั้งหน้าตายเงียบๆ (ไม่มี event listener สักตัว)
+const FB_CFG = {
+  apiKey:            'AIzaSyB7uSMVYta28csoka_Kj160U1OuCFHvNWs',
+  authDomain:        'interview-survey.firebaseapp.com',
+  projectId:         'interview-survey',
+  storageBucket:     'interview-survey.firebasestorage.app',
+  messagingSenderId: '563577463134',
+  appId:             '1:563577463134:web:b55381c292cb5433b7afcf'
+};
+if (!firebase.apps.length) firebase.initializeApp(FB_CFG);
 const db = firebase.firestore();
 const $  = id => document.getElementById(id);
 const esc = s => (s == null ? '' : String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -128,17 +142,37 @@ const clearMsg = el => { el.textContent = ''; el.className = 'msg'; };
 
 let editingId = null;
 
+// รหัสโครงการต้องเป็น a-z 0-9 - เท่านั้น เพราะไปอยู่ใน URL (?project=) และในลิงก์ QR
+// ชื่อภาษาไทยจึงตกหมด → ต้องมีรหัสสำรองให้ ไม่ใช่ปล่อยช่องว่างแล้วให้ผู้ใช้งง
 function slug(s) {
   return (s || '').toLowerCase().trim()
-    .replace(/[^a-z0-9฀-๿-]+/g, '-')
+    .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '').slice(0, 60);
+}
+
+// รหัสสำรองสำหรับชื่อที่ไม่มีตัวอักษรอังกฤษเลย — สุ่มครั้งเดียวต่อฟอร์ม
+// (ถ้าสุ่มใหม่ทุกตัวอักษรที่พิมพ์ ช่องรหัสจะกระพริบเปลี่ยนไปมา)
+let autoSuffix = null;
+function autoId(name) {
+  const base = slug(name);
+  // ต้องมีตัวอักษรอังกฤษจริงๆ ถึงจะสื่อความหมาย — ชื่อไทยมักเหลือแค่ตัวเลขปี
+  if (base.length >= 3 && /[a-z]/.test(base)) return base;
+  if (/^[0-9]+$/.test(base)) return 'proj-' + base;   // เช่น "2569" → "proj-2569"
+
+  if (!autoSuffix) {
+    const d = new Date();
+    autoSuffix = 'proj-' + d.getFullYear()
+      + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0')
+      + '-' + Math.random().toString(36).slice(2, 6);
+  }
+  return autoSuffix;
 }
 
 // เติมรหัสให้อัตโนมัติจากชื่อ ตราบใดที่ผู้ใช้ยังไม่พิมพ์เอง
 let idTouched = false;
 $('fId').addEventListener('input', () => { idTouched = true; });
 $('fName').addEventListener('input', () => {
-  if (!idTouched && !editingId) $('fId').value = slug($('fName').value);
+  if (!idTouched && !editingId) $('fId').value = autoId($('fName').value);
 });
 
 async function load() {
@@ -190,7 +224,7 @@ function startEdit(p) {
 }
 
 function resetForm() {
-  editingId = null; idTouched = false;
+  editingId = null; idTouched = false; autoSuffix = null;
   $('formTitle').textContent = '➕ สร้างโครงการใหม่';
   $('fName').value = ''; $('fId').value = ''; $('fArea').value = '';
   $('fStatus').value = 'active';
@@ -202,20 +236,23 @@ $('btnCancel').addEventListener('click', resetForm);
 
 $('btnSave').addEventListener('click', async () => {
   const name = $('fName').value.trim();
-  const id   = $('fId').value.trim();
+  let   id   = $('fId').value.trim();
   if (!name) return msg($('formMsg'), 'ใส่ชื่อโครงการก่อน', 'err');
-  if (!id)   return msg($('formMsg'), 'ใส่รหัสโครงการก่อน', 'err');
+  if (!id) { id = autoId(name); $('fId').value = id; }   // ว่าง = สร้างให้เลย ไม่ต้องเด้ง error
   if (!/^[a-z0-9-]+$/.test(id))
-    return msg($('formMsg'), 'รหัสโครงการใช้ได้เฉพาะ a-z 0-9 และ - (ห้ามเว้นวรรค/ภาษาไทย)', 'err');
+    return msg($('formMsg'),
+      'รหัสโครงการใช้ได้เฉพาะตัวอักษรอังกฤษพิมพ์เล็ก ตัวเลข และขีด (-) — พบตัวอักษรอื่น เช่นภาษาไทยหรือเว้นวรรค '
+      + 'ลองใช้ "' + autoId(name) + '"', 'err');
 
   const me = (firebase.auth().currentUser || {}).email || '';
+  let okText = '';
   try {
     if (editingId) {
       await db.collection('projects').doc(editingId).set({
         name, area: $('fArea').value.trim(), status: $('fStatus').value,
         updatedAt: new Date().toISOString(), updatedBy: me
       }, { merge: true });
-      msg($('formMsg'), '✅ บันทึกแล้ว', 'ok');
+      okText = '✅ บันทึกการแก้ไขแล้ว';
     } else {
       // กันเขียนทับโครงการที่มีอยู่ (id ซ้ำ = ข้อมูลปนกันทันที)
       const exist = await db.collection('projects').doc(id).get();
@@ -225,9 +262,10 @@ $('btnSave').addEventListener('click', async () => {
         memberUids: [],
         createdAt: new Date().toISOString(), createdBy: me
       });
-      msg($('formMsg'), '✅ สร้างโครงการ "' + name + '" แล้ว', 'ok');
+      okText = '✅ สร้างโครงการ "' + name + '" แล้ว (รหัส: ' + id + ')';
     }
-    resetForm();
+    resetForm();          // ล้างฟอร์ม (ล้าง formMsg ด้วย) แล้วค่อยแสดงผลลัพธ์ทับ
+    msg($('formMsg'), okText, 'ok');
     await load();
   } catch (e) {
     msg($('formMsg'), 'บันทึกไม่สำเร็จ: ' + e.message, 'err');
