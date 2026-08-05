@@ -202,6 +202,22 @@ async function loginAdmin(username, password) {
 
 // ── DATA PULL ─────────────────────────────────────────────────────────────────
 // nested schema: households/{}/members/{}/trips/{} → ประกอบเป็น hh.members[].trips[]
+// อัปเดตข้อความใต้ spinner ระหว่างโหลด — งานนี้ยิงหลักพันคำขอ ใช้เวลาหลายวินาที
+// ถ้าปล่อยให้หมุนเปล่าโดยไม่บอกอะไร ผู้ใช้แยกไม่ออกว่า "กำลังโหลด" กับ "ค้าง"
+let _progress = { hh: 0, mem: 0, trip: 0, st: 0, iv: 0 };
+function reportProgress() {
+  const el = document.getElementById('loadingMsg');
+  if (!el) return;
+  const p = _progress;
+  const parts = [];
+  if (p.hh)   parts.push(`${p.hh} ครัวเรือน`);
+  if (p.mem)  parts.push(`${p.mem} สมาชิก`);
+  if (p.trip) parts.push(`${p.trip} เที่ยว`);
+  if (p.st)   parts.push(`${p.st} จุดสำรวจ`);
+  if (p.iv)   parts.push(`${p.iv} สัมภาษณ์`);
+  el.textContent = parts.length ? 'กำลังโหลด — ' + parts.join(' · ') : 'กำลังโหลดข้อมูล...';
+}
+
 async function pullHouseholds() {
   // staff = ดึงเฉพาะทีมตัวเอง (ประหยัดค่าอ่านจริง — เดิมดึงทุกบ้าน + subcollection ต่อบ้าน)
   let q = Project.col(db, 'households');
@@ -213,6 +229,7 @@ async function pullHouseholds() {
   });
 
   // members ของแต่ละ household (parallel)
+  _progress.hh = households.length; reportProgress();
   const memSnaps = await Promise.all(
     snap.docs.map(d => d.ref.collection('members').get({ source: 'server' }))
   );
@@ -227,9 +244,11 @@ async function pullHouseholds() {
   });
 
   // trips ของแต่ละ member (parallel)
+  _progress.mem = memberRefs.length; reportProgress();
   const tripSnaps = await Promise.all(
     memberRefs.map(mr => mr.ref.collection('trips').get({ source: 'server' }))
   );
+  _progress.trip = tripSnaps.reduce((a, t) => a + t.size, 0); reportProgress();
   tripSnaps.forEach((tSnap, i) => {
     tSnap.docs.forEach(td => {
       const t = td.data(); delete t._device; delete t._syncedAt;
@@ -258,9 +277,11 @@ async function pullRoadside() {
     const x = d.data(); delete x._device; delete x._syncedAt;
     x.interviews = []; map[d.id] = x;
   });
+  _progress.st = stSnap.size; reportProgress();
   const ivSnaps = await Promise.all(
     stSnap.docs.map(d => d.ref.collection('interviews').get({ source: 'server' }))
   );
+  _progress.iv = ivSnaps.reduce((a, x) => a + x.size, 0); reportProgress();
   ivSnaps.forEach((snap, i) => {
     const stId = stSnap.docs[i].id;
     snap.docs.forEach(d => {
@@ -1247,12 +1268,19 @@ const App = {
   async loadData() {
     const errBox = document.getElementById('loadError');
     if (errBox) errBox.style.display = 'none';
+    _progress = { hh: 0, mem: 0, trip: 0, st: 0, iv: 0 };
     this._showLoading('กำลังโหลดข้อมูล Home...');
     try {
       await withTimeout(loadCloudZones(), 20000, 'ข้อมูลโซน');   // โซนจากระบบ (ถ้าเคยอัปโหลดผ่าน import-zones)
-      households = await withTimeout(pullHouseholds(), 45000, 'ข้อมูล Home');
-      this._setStatus('โหลด Home แล้ว · กำลังโหลด Roadside...');
-      stations   = await withTimeout(pullRoadside(), 45000, 'ข้อมูล Roadside');
+      // Home กับ Roadside ไม่เกี่ยวกัน → ดึงพร้อมกัน ไม่ต้องรอให้ Home เสร็จก่อน
+      // (เดิมรอทีละอัน = เสียเวลาเปล่าเท่ากับเวลาโหลด Roadside ทั้งก้อน)
+      this._setStatus('กำลังโหลดข้อมูล Home และ Roadside...');
+      const [hhRes, stRes] = await Promise.all([
+        withTimeout(pullHouseholds(), 45000, 'ข้อมูล Home'),
+        withTimeout(pullRoadside(),   45000, 'ข้อมูล Roadside')
+      ]);
+      households = hhRes;
+      stations   = stRes;
       const ivCnt = allInterviews().length;
       this._setStatus(`✓ ${households.length} ครัวเรือน · ${stations.length} จุดสำรวจ · ${ivCnt} สัมภาษณ์`
         + (isStaff() ? ' · เฉพาะทีมของคุณ' : ''));
