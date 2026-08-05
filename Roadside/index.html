@@ -49,6 +49,26 @@
 
   <script src="js/firebase.js"></script>
   <script>
+    // ===== ประตูทางเข้าแบบสอบถาม =====
+    // 1) ไม่มีโครงการ = เข้ามาผิดทาง → กลับหน้าแรก (ผู้สำรวจต้องมาจากลิงก์ที่ได้รับ)
+    // 2) มาจากลิงก์ (?k=) → ตรวจว่าลิงก์ยังเปิดอยู่ ถ้าถูกปิด/หมดอายุให้กั้นไว้เลย
+    //    ตรวจแบบไม่บล็อกการบูต — ออฟไลน์ต้องยังกรอกงานต่อได้
+    (function () {
+      if (!Project.id()) { location.replace('../index.html'); return; }
+      window.addEventListener('load', function () {
+        if (!FB.db) return;
+        SurveyLink.check(FB.db).then(function (r) {
+          if (!r.ok) { SurveyLink.block(r.reason); return; }
+          // ลิงก์ระบุทีมไว้ → จำชื่อผู้ควบคุมให้ ผู้สำรวจจะได้ไม่ต้องเลือกเอง
+          if (r.link && r.link.supervisorName) {
+            try { localStorage.setItem('_is_supervisor_name', r.link.supervisorName); } catch (_) {}
+          }
+        }).catch(function () {});
+      });
+    })();
+  </script>
+
+  <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').catch(() => {});

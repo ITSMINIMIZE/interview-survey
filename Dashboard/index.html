@@ -225,7 +225,7 @@
   <div class="login-box">
     <div style="font-size:40px;margin-bottom:14px">📊</div>
     <h1>Survey Dashboard</h1>
-    <p class="subtitle">โครงการสำรวจการเดินทาง — ผังเมืองรวมบ้านไผ่<br>ผู้ดูแล = เห็นข้อมูลทั้งหมด · ผู้ควบคุม = เห็นเฉพาะทีมตัวเอง</p>
+    <p class="subtitle" id="loginSub">ผู้ดูแล = เห็นข้อมูลทั้งหมด · ผู้ควบคุม = เห็นเฉพาะทีมตัวเอง</p>
     <div class="form-group">
       <label>ชื่อผู้ใช้ หรือ อีเมล</label>
       <input type="text" id="loginUsername" placeholder="ผู้ดูแล: ชื่อผู้ใช้ · ผู้ควบคุม: อีเมล" autocomplete="username" />
@@ -255,9 +255,11 @@
 
   <!-- Header -->
   <div class="dash-header">
-    <div class="dash-logo">📊 บ้านไผ่ Survey Dashboard</div>
+    <div class="dash-logo" id="dashLogo">📊 Survey Dashboard</div>
     <div class="header-right">
       <span id="headerUser"></span>
+      <button class="btn-sm" id="btnSurveyLinks" onclick="SurveyLinks.open()"
+              style="background:#2563eb;color:#fff;border-color:#2563eb">🔗 ลิงก์แบบสอบถาม</button>
       <button class="btn-sm" onclick="location.href='../index.html'">🏠 เมนูหลัก</button>
       <button class="btn-sm" onclick="App.refresh()">🔄 รีเฟรช</button>
       <button class="btn-sm" onclick="App.changePassword()">🔑 เปลี่ยนรหัสผ่าน</button>
@@ -565,9 +567,11 @@
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <!-- Zone GeoJSON (defines ZONES_GEOJSON) -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="js/project-service.js"></script>
 <script src="js/zones.js"></script>
 <!-- Dashboard logic -->
 <script src="js/dashboard.js?v=round1"></script>
+<script src="js/survey-links.js"></script>
 </body>
 </html>

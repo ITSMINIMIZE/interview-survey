@@ -136,3 +136,82 @@ const Project = {
     return url + (url.includes('?') ? '&' : '?') + 'project=' + encodeURIComponent(id);
   }
 };
+
+
+// ===== SURVEY LINK — ลิงก์ที่แจกให้ผู้สำรวจ =====
+//
+//   surveyLinks/{token} = { token, projectId, app:'home'|'roadside', label,
+//                           supervisorName, enabled, expiresAt, createdAt, createdBy }
+//
+// รูปแบบ URL:  .../Home/?project=<pid>&k=<token>
+//
+// ⚠️ จงใจใส่ project ใน URL ด้วย ไม่ได้ให้ token เป็นตัวบอกโครงการอย่างเดียว
+//    เพราะแอปต้องรู้โครงการ "ทันทีตอนบูต" (แบบ sync) ไม่งั้นต้องรอ Firestore
+//    ก่อนจะเริ่มโหลดข้อมูลได้ — ช้าและพังตอนออฟไลน์
+//    token ใช้สำหรับ (1) ตรวจว่าลิงก์ยังเปิดอยู่ (2) เติมชื่อผู้ควบคุมให้อัตโนมัติ
+//
+// ⚠️ ลิงก์คือ bearer token — ใครได้ไปก็ส่งข้อมูลได้ ปิด/ตั้งวันหมดอายุได้จากหน้า Dashboard
+const SurveyLink = {
+  KEY: '_is_survey_link',
+
+  // token จาก URL (ชนะ) → ที่จำไว้ (เปิดแอปซ้ำ/ติดตั้ง PWA แล้วไม่มี query)
+  token() {
+    try {
+      const q = new URLSearchParams(location.search).get('k');
+      if (q) return q;
+      const c = this._cached();
+      return c ? c.token : null;
+    } catch (_) { return null; }
+  },
+
+  _cached() {
+    try { return JSON.parse(localStorage.getItem(this.KEY) || 'null'); } catch (_) { return null; }
+  },
+
+  // ข้อมูลลิงก์ล่าสุดที่ตรวจผ่าน (ใช้ตอนออฟไลน์ได้)
+  info() {
+    const c = this._cached();
+    return (c && c.projectId === Project.id()) ? c : null;
+  },
+
+  // ตรวจว่าลิงก์ยังใช้ได้ — คืน { ok, reason, link }
+  // ออฟไลน์/อ่านไม่ได้ = ไม่บล็อก (หน้างานต้องทำงานต่อได้) ใช้ข้อมูลที่จำไว้แทน
+  async check(db) {
+    const t = this.token();
+    if (!t) return { ok: true, reason: 'no-token' };   // เข้าตรงโดยไม่ผ่านลิงก์
+    let snap;
+    try {
+      snap = await db.collection('surveyLinks').doc(t).get();
+    } catch (_) {
+      return { ok: true, reason: 'offline', link: this._cached() };
+    }
+    if (!snap.exists)             return { ok: false, reason: 'ไม่พบลิงก์นี้ในระบบ (อาจถูกลบไปแล้ว)' };
+    const d = snap.data();
+    if (d.enabled === false)      return { ok: false, reason: 'ลิงก์นี้ถูกปิดการใช้งานแล้ว' };
+    if (d.expiresAt && new Date(d.expiresAt) < new Date())
+                                  return { ok: false, reason: 'ลิงก์นี้หมดอายุแล้ว (' + d.expiresAt.slice(0,10) + ')' };
+    if (d.projectId && Project.id() && d.projectId !== Project.id())
+                                  return { ok: false, reason: 'ลิงก์ไม่ตรงกับโครงการที่เปิดอยู่' };
+
+    const link = { token: t, ...d };
+    try { localStorage.setItem(this.KEY, JSON.stringify(link)); } catch (_) {}
+    return { ok: true, link };
+  },
+
+  // แสดงหน้ากั้นเมื่อลิงก์ใช้ไม่ได้ — ผู้สำรวจไม่ควรกรอกข้อมูลต่อ
+  block(reason) {
+    const el = document.createElement('div');
+    el.setAttribute('style',
+      'position:fixed;inset:0;z-index:99999;background:#0f172a;color:#f1f5f9;' +
+      'display:flex;align-items:center;justify-content:center;padding:24px;' +
+      "font-family:'Sarabun',sans-serif;text-align:center;line-height:1.8");
+    el.innerHTML =
+      '<div style="max-width:380px">' +
+        '<div style="font-size:44px;margin-bottom:14px">🔒</div>' +
+        '<div style="font-size:19px;font-weight:700;margin-bottom:10px">ใช้ลิงก์นี้ไม่ได้</div>' +
+        '<div style="color:#94a3b8;font-size:14px">' + reason + '</div>' +
+        '<div style="color:#64748b;font-size:13px;margin-top:18px">ติดต่อผู้ควบคุมเพื่อขอลิงก์ใหม่</div>' +
+      '</div>';
+    document.body.appendChild(el);
+  }
+};

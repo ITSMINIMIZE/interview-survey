@@ -8,250 +8,339 @@
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Sarabun', sans-serif;
-      min-height: 100vh;
-      background: #0f172a;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
+    :root {
+      --bg: #0f172a; --panel: #1e293b; --line: #334155; --line2: #475569;
+      --text: #f1f5f9; --muted: #64748b; --muted2: #94a3b8; --primary: #2563eb;
     }
-    .logo { text-align: center; margin-bottom: 40px; }
-    .logo-icon { font-size: 36px; display: block; margin-bottom: 10px; }
-    .logo-title { font-size: 28px; font-weight: 700; color: #f8fafc; letter-spacing: .06em; }
-    .logo-sub { font-size: 14px; color: #64748b; margin-top: 6px; }
-
-    .wrap { width: 100%; max-width: 980px; }
-
-    /* ---------- แถบโครงการปัจจุบัน ---------- */
-    .ctx {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 16px; flex-wrap: wrap;
-      background: #1e293b; border: 1px solid #334155; border-radius: 12px;
-      padding: 14px 18px; margin-bottom: 20px;
-    }
-    .ctx-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .08em; }
-    .ctx-name { font-size: 17px; font-weight: 700; color: #f1f5f9; margin-top: 2px; }
-    .ctx-btn {
-      background: #334155; border: 1px solid #475569; color: #cbd5e1;
-      font-family: inherit; font-size: 13px; font-weight: 600;
-      padding: 8px 14px; border-radius: 8px; cursor: pointer;
-    }
-    .ctx-btn:hover { background: #475569; color: #f1f5f9; }
-
-    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; width: 100%; }
-    .card {
-      background: #1e293b; border: 1px solid #334155; border-radius: 16px;
-      padding: 32px 28px; text-decoration: none; color: inherit;
-      display: flex; flex-direction: column; gap: 14px;
-      transition: all .2s ease; position: relative; overflow: hidden;
-      text-align: left; font-family: inherit; cursor: pointer;
-    }
-    .card::before {
-      content: ''; position: absolute; inset: 0; opacity: 0;
-      transition: opacity .2s ease; border-radius: inherit;
-    }
-    .card.home::before { background: linear-gradient(135deg, rgba(37,99,235,.15), rgba(6,182,212,.08)); }
-    .card.road::before { background: linear-gradient(135deg, rgba(245,158,11,.12), rgba(239,68,68,.08)); }
-    .card.dash::before { background: linear-gradient(135deg, rgba(139,92,246,.12), rgba(236,72,153,.08)); }
-    .card.proj::before { background: linear-gradient(135deg, rgba(16,185,129,.12), rgba(6,182,212,.08)); }
-    .card:hover { border-color: #475569; transform: translateY(-4px); box-shadow: 0 20px 48px rgba(0,0,0,.4); }
-    .card:hover::before { opacity: 1; }
-    .card-icon { font-size: 40px; }
-    .card-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
-      width: fit-content; text-transform: uppercase; letter-spacing: .05em;
-    }
-    .badge-active { background: rgba(16,185,129,.15); color: #34d399; border: 1px solid rgba(52,211,153,.2); }
-    .badge-paused { background: rgba(100,116,139,.15); color: #94a3b8; border: 1px solid rgba(148,163,184,.2); }
-    .card-title { font-size: 20px; font-weight: 700; color: #f1f5f9; }
-    .card-desc { font-size: 14px; color: #64748b; line-height: 1.6; }
-    .card-action { margin-top: 8px; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
-    .card.home .card-action { color: #60a5fa; }
-    .card.road .card-action { color: #fb923c; }
-    .card.dash .card-action { color: #a78bfa; }
-    .card.proj .card-action { color: #34d399; }
-
-    .state { text-align: center; color: #64748b; font-size: 14px; padding: 40px 20px; line-height: 1.8; }
-    .state a { color: #60a5fa; }
-    .state-title { color: #cbd5e1; font-size: 16px; font-weight: 600; margin-bottom: 8px; }
-
-    .footer { margin-top: 48px; font-size: 12px; color: #334155; text-align: center; }
+    body { font-family: 'Sarabun', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
     .hidden { display: none !important; }
 
-    @media (max-width: 700px) { .cards { grid-template-columns: 1fr; } }
-
-    .tools-fab {
-      position: fixed; right: 16px; bottom: 16px;
-      width: 34px; height: 34px;
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 50%; background: #1e293b; border: 1px solid #334155;
-      color: #475569; font-size: 15px; text-decoration: none; opacity: .35;
-      transition: opacity .2s ease, color .2s ease, transform .2s ease;
+    /* ═══════════ LOGIN ═══════════ */
+    #vLogin {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
     }
-    .tools-fab:hover { opacity: 1; color: #94a3b8; transform: translateY(-2px); }
+    .login-box {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 18px;
+      padding: 40px 34px; width: 100%; max-width: 400px; text-align: center;
+    }
+    .login-icon { font-size: 40px; display: block; margin-bottom: 12px; }
+    .login-box h1 { font-size: 24px; letter-spacing: .06em; margin-bottom: 6px; }
+    .login-box .sub { color: var(--muted); font-size: 13px; margin-bottom: 26px; line-height: 1.6; }
+    .field { text-align: left; margin-bottom: 14px; }
+    .field label { display: block; font-size: 12px; color: var(--muted2); font-weight: 600; margin-bottom: 5px; }
+    .field input {
+      width: 100%; padding: 11px 13px; background: var(--bg); border: 1px solid var(--line);
+      border-radius: 9px; color: var(--text); font-size: 14px; font-family: inherit;
+    }
+    .field input:focus { outline: none; border-color: var(--primary); }
+    .btn {
+      font-family: inherit; font-size: 14px; font-weight: 600; padding: 11px 18px;
+      border-radius: 9px; border: 1px solid transparent; cursor: pointer;
+    }
+    .btn-primary { background: var(--primary); color: #fff; width: 100%; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-primary:disabled { opacity: .6; cursor: default; }
+    .btn-ghost { background: var(--line); color: #cbd5e1; border-color: var(--line2); }
+    .btn-ghost:hover { background: var(--line2); color: var(--text); }
+    .btn-sm { font-size: 12.5px; padding: 7px 13px; }
+    .err {
+      display: none; margin-top: 13px; padding: 10px 13px; border-radius: 9px; font-size: 13px;
+      background: rgba(239,68,68,.12); color: #fca5a5; border: 1px solid rgba(252,165,165,.25);
+      text-align: left; line-height: 1.6;
+    }
+    .err.show { display: block; }
+    .linky { color: var(--muted); font-size: 12px; text-decoration: none; }
+    .linky:hover { color: var(--muted2); }
+
+    /* ═══════════ APP SHELL ═══════════ */
+    #vMain { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 250px; flex-shrink: 0; background: #111c31;
+      border-right: 1px solid var(--line); padding: 22px 16px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .sb-brand { display: flex; align-items: center; gap: 9px; padding: 0 8px 18px; }
+    .sb-brand-icon { font-size: 20px; }
+    .sb-brand-name { font-size: 16px; font-weight: 700; letter-spacing: .05em; }
+    .sb-group { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .09em; padding: 16px 10px 6px; font-weight: 700; }
+    .sb-link {
+      display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 9px;
+      color: var(--muted2); text-decoration: none; font-size: 13.5px; font-weight: 500;
+    }
+    .sb-link:hover { background: var(--panel); color: var(--text); }
+    .sb-link.active { background: rgba(37,99,235,.16); color: #93c5fd; }
+    .sb-foot { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--line); }
+    .sb-user { padding: 0 10px 12px; }
+    .sb-user-name { font-size: 13.5px; font-weight: 600; color: #cbd5e1; }
+    .sb-user-role { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+    .content { flex: 1; padding: 30px 34px 60px; min-width: 0; }
+    .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; flex-wrap: wrap; margin-bottom: 26px; }
+    .topbar h1 { font-size: 23px; font-weight: 700; }
+    .topbar .desc { color: var(--muted); font-size: 13.5px; margin-top: 4px; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 18px; }
+    .pcard {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 15px;
+      padding: 24px 22px; text-align: left; font-family: inherit; cursor: pointer;
+      display: flex; flex-direction: column; gap: 11px; color: inherit; text-decoration: none;
+      transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+    }
+    .pcard:hover { border-color: var(--line2); transform: translateY(-3px); box-shadow: 0 18px 40px rgba(0,0,0,.38); }
+    .pcard-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .pcard-icon { font-size: 28px; }
+    .pill { padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+    .pill-on { background: rgba(16,185,129,.15); color: #34d399; border: 1px solid rgba(52,211,153,.22); }
+    .pill-off { background: rgba(100,116,139,.15); color: var(--muted2); border: 1px solid rgba(148,163,184,.22); }
+    .pcard-name { font-size: 17px; font-weight: 700; line-height: 1.4; }
+    .pcard-area { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .pcard-go { margin-top: 4px; font-size: 13.5px; font-weight: 600; color: #60a5fa; }
+
+    .empty {
+      background: var(--panel); border: 1px dashed var(--line2); border-radius: 15px;
+      padding: 46px 24px; text-align: center; color: var(--muted); font-size: 14px; line-height: 1.9;
+    }
+    .empty a { color: #60a5fa; }
+    .empty .big { color: #cbd5e1; font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+
+    .mobile-only { display: none; }
+    @media (max-width: 860px) {
+      #vMain { flex-direction: column; }
+      .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--line); }
+      .sb-foot { margin-top: 12px; }
+      .content { padding: 22px 18px 50px; }
+      .mobile-only { display: block; }
+    }
   </style>
 </head>
 <body>
-  <div class="logo">
-    <span class="logo-icon">◈</span>
-    <div class="logo-title">INTERVIEW</div>
-    <div class="logo-sub" id="logoSub">ระบบสำรวจ</div>
-  </div>
 
-  <div class="wrap">
-    <!-- กำลังโหลด -->
-    <div id="vLoading" class="state">กำลังโหลด...</div>
+<!-- ════════ 1) LOGIN ════════ -->
+<div id="vLogin" class="hidden">
+  <div class="login-box">
+    <span class="login-icon">◈</span>
+    <h1>INTERVIEW</h1>
+    <div class="sub">ระบบสำรวจการเดินทาง<br>เข้าสู่ระบบเพื่อจัดการโครงการ</div>
 
-    <!-- เลือกโครงการ -->
-    <div id="vProjects" class="hidden">
-      <div id="projList" class="cards"></div>
-      <div id="projEmpty" class="state hidden">
-        <div class="state-title">ยังไม่มีโครงการในระบบ</div>
-        สร้างโครงการแรกได้ที่ <a href="tools/projects.html">เครื่องมือผู้ดูแล → จัดการโครงการ</a>
-      </div>
+    <div class="field">
+      <label for="lUser">ชื่อผู้ใช้ หรือ อีเมล</label>
+      <input id="lUser" type="text" autocomplete="username" placeholder="ผู้ดูแล: ชื่อผู้ใช้ · ผู้ใช้ทั่วไป: อีเมล" />
     </div>
-
-    <!-- เมนูแบบสอบถาม (หลังเลือกโครงการแล้ว) -->
-    <div id="vApps" class="hidden">
-      <div class="ctx">
-        <div>
-          <div class="ctx-label">โครงการ</div>
-          <div class="ctx-name" id="ctxName">—</div>
-        </div>
-        <button class="ctx-btn" id="btnSwitch" type="button">เปลี่ยนโครงการ</button>
-      </div>
-
-      <div class="cards">
-        <a class="card home" id="lnkHome" href="Home/">
-          <span class="card-icon">
-            <img src="Home/icon.svg" alt="Home" style="width:48px;height:48px;border-radius:10px;display:block;" />
-          </span>
-          <span class="card-badge badge-active">● พร้อมใช้งาน</span>
-          <div class="card-title">Home Interview</div>
-          <div class="card-desc">แบบสอบถามสำหรับการสัมภาษณ์และสำรวจความคิดเห็นภายในบ้าน / ในสถานที่</div>
-          <div class="card-action">เข้าใช้งาน →</div>
-        </a>
-
-        <a class="card road" id="lnkRoad" href="Roadside/">
-          <span class="card-icon">
-            <img src="Roadside/icon.svg" alt="Roadside" style="width:48px;height:48px;border-radius:10px;display:block;" />
-          </span>
-          <span class="card-badge badge-active">● พร้อมใช้งาน</span>
-          <div class="card-title">Roadside Interview</div>
-          <div class="card-desc">แบบสอบถามสำหรับการสัมภาษณ์ริมถนนและภาคสนาม</div>
-          <div class="card-action">เข้าใช้งาน →</div>
-        </a>
-
-        <a class="card dash" id="lnkDash" href="Dashboard/">
-          <span class="card-icon">📊</span>
-          <span class="card-badge badge-active">● พร้อมใช้งาน</span>
-          <div class="card-title">ส่วนแสดงผล</div>
-          <div class="card-desc">แผนที่และสถิติสรุปผลการสำรวจของโครงการนี้</div>
-          <div class="card-action">เข้าใช้งาน →</div>
-        </a>
-      </div>
+    <div class="field">
+      <label for="lPass">รหัสผ่าน</label>
+      <input id="lPass" type="password" autocomplete="current-password" placeholder="••••••••" />
     </div>
-
-    <!-- อ่านรายการโครงการไม่ได้ -->
-    <div id="vDenied" class="state hidden">
-      <div class="state-title">ยังเลือกโครงการไม่ได้</div>
-      เปิดจาก<b>ลิงก์ที่ได้รับ</b> หรือ <a href="tools/">เข้าสู่ระบบผู้ดูแล</a> เพื่อเลือกโครงการ
+    <button class="btn btn-primary" id="lBtn" type="button">เข้าสู่ระบบ</button>
+    <div class="err" id="lErr"></div>
+    <div style="margin-top:15px"><a href="#" class="linky" id="lForgot">ลืมรหัสผ่าน?</a></div>
+    <div style="margin-top:22px;font-size:11.5px;color:#334155;line-height:1.7">
+      ผู้สำรวจไม่ต้องเข้าสู่ระบบ — เปิดจากลิงก์ที่ได้รับได้เลย
     </div>
   </div>
+</div>
 
-  <div class="footer">© 2026 INTERVIEW</div>
-  <a class="tools-fab" href="tools/" title="เครื่องมือผู้ดูแล" aria-label="เครื่องมือผู้ดูแล">⚙</a>
+<!-- ════════ 2) หน้าหลัก ════════ -->
+<div id="vMain" class="hidden">
+  <aside class="sidebar">
+    <div class="sb-brand">
+      <span class="sb-brand-icon">◈</span>
+      <span class="sb-brand-name">INTERVIEW</span>
+    </div>
 
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="Home/js/project-service.js"></script>
-  <script>
-  // ===== หน้าแรก = ตัวเลือกโครงการ แล้วค่อยเข้าแบบสอบถาม =====
-  // ?project=<id> → ข้ามขั้นเลือก เข้าเมนูเลย (ใช้กับลิงก์ที่แจก)
-  // ?switch=1     → บังคับให้กลับมาหน้าเลือกโครงการ
-  const cfg = {
-    apiKey:            'AIzaSyB7uSMVYta28csoka_Kj160U1OuCFHvNWs',
-    authDomain:        'interview-survey.firebaseapp.com',
-    projectId:         'interview-survey',
-    storageBucket:     'interview-survey.firebasestorage.app',
-    messagingSenderId: '563577463134',
-    appId:             '1:563577463134:web:b55381c292cb5433b7afcf'
-  };
-  firebase.initializeApp(cfg);
-  const db   = firebase.firestore();
-  const auth = firebase.auth();
+    <a class="sb-link active" href="./">🗂 โครงการทั้งหมด</a>
 
-  const $ = id => document.getElementById(id);
-  const show = id => { ['vLoading','vProjects','vApps','vDenied'].forEach(v => $(v).classList.toggle('hidden', v !== id)); };
-  const esc = s => (s == null ? '' : String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    <div id="adminNav" class="hidden">
+      <div class="sb-group">ผู้ดูแลระบบ</div>
+      <a class="sb-link" href="tools/projects.html">📋 จัดการโครงการ</a>
+      <a class="sb-link" href="tools/users.html">👥 จัดการบัญชีผู้ใช้</a>
+      <a class="sb-link" href="tools/data-round.html">🗓 รอบเก็บข้อมูล</a>
+      <a class="sb-link" href="tools/import-zones.html">🗺 นำเข้าโซน</a>
+      <a class="sb-link" href="tools/config.html">🔑 ตั้งค่า API key</a>
+      <a class="sb-link" href="tools/">🧰 เครื่องมือทั้งหมด</a>
+    </div>
 
-  const forceSwitch = new URLSearchParams(location.search).get('switch') === '1';
-  if (forceSwitch) Project.clear();
+    <div class="sb-foot">
+      <div class="sb-user">
+        <div class="sb-user-name" id="sbName">—</div>
+        <div class="sb-user-role" id="sbRole">—</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="btnLogout" type="button" style="width:100%">ออกจากระบบ</button>
+    </div>
+  </aside>
 
-  // เข้าเมนูแบบสอบถามของโครงการที่เลือกอยู่
-  async function enterApps() {
-    await Project.load(db);
-    $('ctxName').textContent = Project.meta ? Project.meta.name : Project.id();
-    $('logoSub').textContent = 'เลือกประเภทแบบสอบถาม';
-    // ต่อ ?project= ให้ทุกลิงก์ เผื่อเปิดคนละแท็บ/แชร์ต่อ
-    ['lnkHome','lnkRoad','lnkDash'].forEach(id => {
-      const a = $(id);
-      a.href = Project.withId(a.getAttribute('href'));
-    });
-    show('vApps');
+  <main class="content">
+    <div class="topbar">
+      <div>
+        <h1>โครงการทั้งหมด</h1>
+        <div class="desc" id="projDesc">เลือกโครงการเพื่อเข้าสู่หน้าสรุปผล</div>
+      </div>
+      <button class="btn btn-ghost btn-sm hidden" id="btnNewProj" type="button">➕ สร้างโครงการใหม่</button>
+    </div>
+
+    <div id="projGrid" class="grid"></div>
+    <div id="projEmpty" class="empty hidden"></div>
+  </main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="Home/js/project-service.js"></script>
+<script>
+// ===== หน้าแรก = login → หน้าหลักรวมโครงการ =====
+// กดโครงการ → เข้า Dashboard ของโครงการนั้นทันที
+// ผู้สำรวจไม่ผ่านหน้านี้ — เปิดจากลิงก์ ?k=<token> เข้าแบบสอบถามตรงๆ
+const cfg = {
+  apiKey:            'AIzaSyB7uSMVYta28csoka_Kj160U1OuCFHvNWs',
+  authDomain:        'interview-survey.firebaseapp.com',
+  projectId:         'interview-survey',
+  storageBucket:     'interview-survey.firebasestorage.app',
+  messagingSenderId: '563577463134',
+  appId:             '1:563577463134:web:b55381c292cb5433b7afcf'
+};
+firebase.initializeApp(cfg);
+const db   = firebase.firestore();
+const auth = firebase.auth();
+const EMAIL_DOMAIN = '@interview-survey.local';
+
+const $   = id => document.getElementById(id);
+const esc = s => (s == null ? '' : String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const show = which => { $('vLogin').classList.toggle('hidden', which !== 'login');
+                        $('vMain').classList.toggle('hidden', which !== 'main'); };
+const showErr = t => { $('lErr').innerHTML = t; $('lErr').classList.add('show'); };
+const hideErr = () => $('lErr').classList.remove('show');
+
+let ME = null;   // { uid, role: 'admin'|'user', displayName, ... }
+
+// ---------- login ----------
+async function doLogin() {
+  hideErr();
+  const u = $('lUser').value.trim().toLowerCase().replace(/\s+/g, '');
+  const p = $('lPass').value;
+  if (!u || !p) return showErr('กรอกชื่อผู้ใช้และรหัสผ่านให้ครบ');
+  const email = u.includes('@') ? u : u + EMAIL_DOMAIN;
+  $('lBtn').disabled = true; $('lBtn').textContent = 'กำลังเข้าสู่ระบบ...';
+  try {
+    await auth.signInWithEmailAndPassword(email, p);
+    // onAuthStateChanged จะพาไปต่อเอง
+  } catch (e) {
+    const map = {
+      'auth/invalid-login-credentials': 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',
+      'auth/invalid-credential':        'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',
+      'auth/wrong-password':            'รหัสผ่านไม่ถูกต้อง',
+      'auth/user-not-found':            'ไม่พบบัญชีนี้',
+      'auth/too-many-requests':         'ลองผิดหลายครั้งเกินไป — รอสักครู่แล้วลองใหม่',
+      'auth/network-request-failed':    'เชื่อมต่ออินเทอร์เน็ตไม่ได้'
+    };
+    showErr(map[e.code] || ('เข้าสู่ระบบไม่สำเร็จ: ' + (e.code || e.message)));
+  } finally {
+    $('lBtn').disabled = false; $('lBtn').textContent = 'เข้าสู่ระบบ';
+  }
+}
+$('lBtn').addEventListener('click', doLogin);
+['lUser','lPass'].forEach(id =>
+  $(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); }));
+
+$('lForgot').addEventListener('click', async e => {
+  e.preventDefault();
+  hideErr();
+  const u = $('lUser').value.trim().toLowerCase();
+  if (!u.includes('@'))
+    return showErr('ใส่<b>อีเมลจริง</b>ในช่องด้านบนก่อน แล้วกดลืมรหัสผ่านอีกครั้ง<br>'
+                 + 'บัญชีที่เป็นชื่อผู้ใช้เฉยๆ ส่งอีเมลไม่ได้ — ให้ผู้ดูแลตั้งรหัสใหม่ให้');
+  try {
+    await auth.sendPasswordResetEmail(u);
+    showErr('ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่ ' + esc(u) + ' แล้ว — ตรวจกล่องจดหมาย (รวมโฟลเดอร์สแปม)');
+  } catch (e2) { showErr('ส่งอีเมลไม่สำเร็จ: ' + (e2.code || e2.message)); }
+});
+
+$('btnLogout').addEventListener('click', async () => {
+  Project.clear();
+  try { localStorage.removeItem('_is_role_cache_v1'); } catch (_) {}
+  await auth.signOut();
+  location.reload();
+});
+
+// ---------- สิทธิ์ระดับระบบ ----------
+// หน้านี้ยังไม่มีบริบทโครงการ → ดูแค่ users/{uid} ('staff' เดิม = 'user')
+async function loadMe(user) {
+  const snap = await db.collection('users').doc(user.uid).get();
+  if (!snap.exists) return null;
+  const d = snap.data();
+  if (d.disabled === true) return null;
+  const role = (d.role === 'staff') ? 'user' : (d.role || '');
+  if (role !== 'admin' && role !== 'user') return null;
+  return { uid: user.uid, email: user.email || '', role,
+           displayName: d.displayName || d.username || (user.email || '').split('@')[0] };
+}
+
+// ---------- หน้าหลัก ----------
+async function renderMain() {
+  $('sbName').textContent = ME.displayName;
+  $('sbRole').textContent = ME.role === 'admin' ? 'ผู้ดูแลระบบ · เห็นทุกโครงการ' : 'ผู้ใช้ทั่วไป · เห็นโครงการที่ได้รับมอบหมาย';
+  $('adminNav').classList.toggle('hidden', ME.role !== 'admin');
+  $('btnNewProj').classList.toggle('hidden', ME.role !== 'admin');
+  show('main');
+
+  let list = [];
+  try {
+    list = await Project.listFor(db, ME);
+  } catch (e) {
+    $('projGrid').innerHTML = '';
+    $('projEmpty').innerHTML = '<div class="big">โหลดรายการโครงการไม่สำเร็จ</div>' + esc(e.message);
+    $('projEmpty').classList.remove('hidden');
+    return;
   }
 
-  // แสดงรายการโครงการให้เลือก
-  async function chooseProject() {
-    $('logoSub').textContent = 'เลือกโครงการ';
-    let docs;
-    try {
-      const snap = await db.collection('projects').get();
-      docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    } catch (e) {
-      // rules ไม่ให้ list (เช่น ผู้สำรวจ anonymous) → ต้องเปิดจากลิงก์
-      show('vDenied');
-      return;
-    }
-    if (!docs.length) {
-      $('projList').innerHTML = '';
-      $('projEmpty').classList.remove('hidden');
-      show('vProjects');
-      return;
-    }
-    docs.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-    $('projList').innerHTML = docs.map(p => {
-      const active = p.status !== 'paused';
-      return `<button class="card proj" data-id="${esc(p.id)}" type="button">
-        <span class="card-icon">📋</span>
-        <span class="card-badge ${active ? 'badge-active' : 'badge-paused'}">● ${active ? 'กำลังสำรวจ' : 'พักไว้'}</span>
-        <div class="card-title">${esc(p.name || p.id)}</div>
-        <div class="card-desc">${esc(p.area || p.description || 'ไม่มีคำอธิบาย')}</div>
-        <div class="card-action">เลือกโครงการนี้ →</div>
-      </button>`;
-    }).join('');
-    $('projList').querySelectorAll('.card.proj').forEach(el => {
-      el.addEventListener('click', () => {
-        Project.set(el.dataset.id);
-        location.search = '?project=' + encodeURIComponent(el.dataset.id);
-      });
-    });
-    show('vProjects');
+  if (!list.length) {
+    $('projGrid').innerHTML = '';
+    $('projEmpty').innerHTML = ME.role === 'admin'
+      ? '<div class="big">ยังไม่มีโครงการในระบบ</div>สร้างโครงการแรกได้ที่ <a href="tools/projects.html">จัดการโครงการ</a>'
+      : '<div class="big">คุณยังไม่ได้รับมอบหมายโครงการ</div>ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์เข้าโครงการ';
+    $('projEmpty').classList.remove('hidden');
+    $('projDesc').textContent = '';
+    return;
   }
 
-  $('btnSwitch').addEventListener('click', () => { location.search = '?switch=1'; });
+  $('projEmpty').classList.add('hidden');
+  $('projDesc').textContent = `${list.length} โครงการ · เลือกเพื่อเข้าสู่หน้าสรุปผล`;
+  $('projGrid').innerHTML = list.map(p => {
+    const on = p.status !== 'paused';
+    return `<a class="pcard" href="Dashboard/?project=${encodeURIComponent(p.id)}">
+      <div class="pcard-top">
+        <span class="pcard-icon">📋</span>
+        <span class="pill ${on ? 'pill-on' : 'pill-off'}">${on ? 'กำลังสำรวจ' : 'พักไว้'}</span>
+      </div>
+      <div class="pcard-name">${esc(p.name || p.id)}</div>
+      <div class="pcard-area">${esc(p.area || p.description || 'ไม่ได้ระบุพื้นที่')}</div>
+      <div class="pcard-go">เปิดหน้าสรุปผล →</div>
+    </a>`;
+  }).join('');
+}
 
-  // ผู้สำรวจไม่มีบัญชี → anonymous ให้ผ่าน rules (เหมือนในแอป)
-  auth.onAuthStateChanged(async u => {
-    if (!u) { auth.signInAnonymously().catch(() => {}); return; }
-    if (Project.id() && !forceSwitch) await enterApps();
-    else await chooseProject();
-  });
-  </script>
+$('btnNewProj').addEventListener('click', () => { location.href = 'tools/projects.html'; });
+
+// ---------- routing ----------
+auth.onAuthStateChanged(async user => {
+  // ผู้สำรวจ (anonymous) ที่หลงมาหน้านี้ → ให้ login เหมือนคนอื่น
+  if (!user || user.isAnonymous) { show('login'); return; }
+  try {
+    ME = await loadMe(user);
+  } catch (e) {
+    show('login');
+    showErr('อ่านสิทธิ์ไม่สำเร็จ: ' + (e.code || e.message));
+    return;
+  }
+  if (!ME) {
+    await auth.signOut();
+    show('login');
+    showErr('บัญชีนี้ยังไม่ได้รับสิทธิ์ใช้งาน — ติดต่อผู้ดูแลระบบ');
+    return;
+  }
+  Project.clear();          // กลับมาหน้าหลัก = ออกจากบริบทโครงการเดิม
+  await renderMain();
+});
+</script>
 </body>
 </html>

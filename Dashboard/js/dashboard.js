@@ -1128,6 +1128,10 @@ const App = {
   _peakSrc:    'home',
 
   init() {
+    // Dashboard = หน้าแรกของ "โครงการหนึ่ง" → ไม่มีโครงการก็ทำอะไรไม่ได้
+    // เด้งกลับหน้าหลักให้เลือกก่อน (แทนที่จะโชว์หน้าว่างเปล่า)
+    if (!Project.id()) { location.replace('../index.html'); return; }
+
     fbInit();
     // Chart.js global defaults
     Chart.defaults.color = '#94a3b8';
@@ -1152,6 +1156,12 @@ const App = {
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('dashboardMain').style.display = 'block';
       set('headerUser', (me.displayName || me.username) + (me.role === 'staff' ? ' · ผู้ควบคุม' : ''));
+      // header แสดงชื่อโครงการที่เปิดอยู่ — หน้านี้คือ "หน้าแรกของโครงการ" แล้ว
+      Project.load(db).then(m => {
+        const el = document.getElementById('dashLogo');
+        if (el) el.textContent = '📊 ' + (m ? m.name : Project.id());
+        if (m) document.title = m.name + ' — Dashboard';
+      }).catch(() => {});
       applyRoleUI();
       this.loadData();
     });
