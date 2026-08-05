@@ -51,7 +51,7 @@
 <div class="wrap">
   <a class="back" href="../index.html">← กลับหน้าหลัก</a>
   <h1>📋 จัดการโครงการ</h1>
-  <div class="sub">แต่ละโครงการมีข้อมูลสำรวจ · คลังสถานที่ · โซน · รอบเก็บข้อมูล เป็นของตัวเอง แยกขาดจากกัน</div>
+  <div class="sub">สร้าง/แก้/ลบโครงการ — แต่ละโครงการมีข้อมูลสำรวจ คลังสถานที่ และโซนเป็นของตัวเอง แยกขาดจากกัน<br>ส่วนการตั้งผู้ควบคุม จุดสำรวจ และเครื่องมือภายในโครงการ อยู่ที่ <b>เครื่องมือโครงการ</b> ในหน้า Dashboard ของโครงการนั้น</div>
 
   <div class="panel">
     <h2 id="formTitle">➕ สร้างโครงการใหม่</h2>
@@ -86,34 +86,6 @@
     <div class="msg" id="listMsg"></div>
   </div>
 
-  <!-- ===== แต่งตั้งผู้ควบคุม (staff) เข้าโครงการ ===== -->
-  <div class="panel" id="memberPanel" style="display:none">
-    <h2>👔 ผู้ควบคุมของโครงการ <span id="mProjName" style="color:#60a5fa"></span></h2>
-    <div class="hint" style="margin-bottom:14px">
-      บัญชีระดับ <b>user</b> จะเห็นโครงการนี้ก็ต่อเมื่อถูกแต่งตั้งที่นี่ ·
-      เมื่อแต่งตั้งแล้วจะเป็น <b>ผู้ควบคุม (staff)</b> เห็นและแก้เฉพาะข้อมูลทีมตัวเอง ·
-      จุดสำรวจที่เขาสร้างจะมีชื่อเขาเป็นผู้ควบคุมอัตโนมัติ
-    </div>
-
-    <div class="row">
-      <div>
-        <label for="mUser">เลือกบัญชี</label>
-        <select id="mUser"><option value="">— กำลังโหลด —</option></select>
-      </div>
-      <div>
-        <label for="mSupName">ชื่อผู้ควบคุมในโครงการนี้ *</label>
-        <input id="mSupName" placeholder="เช่น สมศักดิ์" />
-        <div class="hint">ชื่อนี้ใช้จับคู่ข้อมูลกับทีม — ต้องตรงกับที่ผู้สำรวจเลือกในฟอร์ม</div>
-      </div>
-    </div>
-    <div class="actions">
-      <button class="btn-primary" id="btnAddMember" type="button">แต่งตั้งเข้าโครงการ</button>
-      <button class="btn-ghost" id="btnCloseMembers" type="button">ปิด</button>
-    </div>
-    <div class="msg" id="memberMsg"></div>
-
-    <div id="memberList" style="margin-top:18px"></div>
-  </div>
 </div>
 
 <script>
@@ -192,7 +164,7 @@ async function load() {
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <a class="btn-ghost btn-sm" style="text-decoration:none;display:inline-block" href="../index.html?project=${encodeURIComponent(p.id)}">เปิด</a>
-          <button class="btn-ghost btn-sm" data-mem="${esc(p.id)}" type="button">👔 ผู้ควบคุม</button>
+          <a class="btn-ghost btn-sm" style="text-decoration:none;display:inline-block" href="../Dashboard/?project=${encodeURIComponent(p.id)}">🧰 เครื่องมือโครงการ</a>
           <button class="btn-ghost btn-sm" data-edit="${esc(p.id)}" type="button">แก้ไข</button>
           <button class="btn-danger btn-sm" data-del="${esc(p.id)}" type="button">ลบ</button>
         </div>
@@ -202,8 +174,6 @@ async function load() {
       b.addEventListener('click', () => startEdit(docs.find(x => x.id === b.dataset.edit))));
     $('list').querySelectorAll('[data-del]').forEach(b =>
       b.addEventListener('click', () => remove(docs.find(x => x.id === b.dataset.del))));
-    $('list').querySelectorAll('[data-mem]').forEach(b =>
-      b.addEventListener('click', () => openMembers(docs.find(x => x.id === b.dataset.mem))));
   } catch (e) {
     msg($('listMsg'), 'โหลดรายการไม่สำเร็จ: ' + e.message, 'err');
   }
@@ -288,127 +258,6 @@ async function remove(p) {
     await load();
   } catch (e) {
     msg($('listMsg'), 'ลบไม่สำเร็จ: ' + e.message, 'err');
-  }
-}
-
-// ===================== ผู้ควบคุมของโครงการ (members) =====================
-// projects/{pid}/members/{uid} = รายละเอียด · projects/{pid}.memberUids = ไว้ query + rules
-// projects/{pid}/config/supervisors = สำเนา "ชื่อผู้ควบคุม" ให้ผู้สำรวจ (anonymous) อ่านได้
-//   — ผู้สำรวจอ่าน members ไม่ได้ตาม rules จึงต้องมีสำเนานี้สำหรับ dropdown ในฟอร์ม
-let memProj = null;
-let ALL_USERS = [];
-
-async function openMembers(p) {
-  if (!p) return;
-  memProj = p;
-  $('mProjName').textContent = p.name || p.id;
-  $('memberPanel').style.display = '';
-  clearMsg($('memberMsg'));
-  $('mSupName').value = '';
-  await Promise.all([loadUserOptions(), renderMembers()]);
-  $('memberPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-$('btnCloseMembers').addEventListener('click', () => { $('memberPanel').style.display = 'none'; memProj = null; });
-
-async function loadUserOptions() {
-  try {
-    if (!ALL_USERS.length) {
-      const snap = await db.collection('users').get();
-      ALL_USERS = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-    }
-    // admin เข้าทุกโครงการอยู่แล้ว ไม่ต้องแต่งตั้ง · บัญชีปิดใช้งานก็ไม่ต้อง
-    const pick = ALL_USERS.filter(u => u.role !== 'admin' && !u.disabled);
-    $('mUser').innerHTML = pick.length
-      ? '<option value="">— เลือกบัญชี —</option>' + pick.map(u =>
-          `<option value="${esc(u.uid)}">${esc(u.displayName || u.username || u.email || u.uid)}${u.email ? ' · ' + esc(u.email) : ''}</option>`).join('')
-      : '<option value="">— ยังไม่มีบัญชีระดับ user (สร้างที่ จัดการบัญชีผู้ใช้) —</option>';
-  } catch (e) {
-    $('mUser').innerHTML = '<option value="">— อ่านรายชื่อบัญชีไม่ได้ —</option>';
-  }
-}
-
-// เติมชื่อผู้ควบคุมให้อัตโนมัติจากบัญชีที่เลือก
-$('mUser').addEventListener('change', () => {
-  const u = ALL_USERS.find(x => x.uid === $('mUser').value);
-  if (u && !$('mSupName').value.trim()) $('mSupName').value = u.displayName || u.username || '';
-});
-
-async function renderMembers() {
-  if (!memProj) return;
-  try {
-    const snap = await db.collection('projects').doc(memProj.id).collection('members').get();
-    const ms = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-    $('memberList').innerHTML = ms.length
-      ? ms.map(m => `
-        <div class="item">
-          <div>
-            <div class="item-name">${esc(m.supervisorName || m.displayName || m.uid)}</div>
-            <div class="item-meta">${esc(m.email || '')} · แต่งตั้ง ${esc((m.addedAt || '').slice(0,10))}</div>
-          </div>
-          <button class="btn-danger btn-sm" data-rm="${esc(m.uid)}" type="button">ถอดออก</button>
-        </div>`).join('')
-      : '<div class="empty">ยังไม่มีผู้ควบคุมในโครงการนี้</div>';
-    $('memberList').querySelectorAll('[data-rm]').forEach(b =>
-      b.addEventListener('click', () => removeMember(b.dataset.rm)));
-  } catch (e) {
-    msg($('memberMsg'), 'อ่านรายชื่อผู้ควบคุมไม่ได้: ' + e.message, 'err');
-  }
-}
-
-// สร้างสำเนารายชื่อผู้ควบคุมให้ผู้สำรวจอ่าน (ต้องเรียกทุกครั้งที่ members เปลี่ยน)
-async function rebuildSupervisors(pid) {
-  const snap = await db.collection('projects').doc(pid).collection('members').get();
-  const list = snap.docs.map(d => d.data())
-    .filter(m => m.supervisorName)
-    .map(m => ({ key: m.supervisorName, name: m.displayName || m.supervisorName }));
-  await db.collection('projects').doc(pid).collection('config').doc('supervisors')
-          .set({ list, updatedAt: new Date().toISOString() });
-}
-
-$('btnAddMember').addEventListener('click', async () => {
-  if (!memProj) return;
-  const uid  = $('mUser').value;
-  const name = $('mSupName').value.trim();
-  if (!uid)  return msg($('memberMsg'), 'เลือกบัญชีก่อน', 'err');
-  if (!name) return msg($('memberMsg'), 'ใส่ชื่อผู้ควบคุมก่อน', 'err');
-
-  const u = ALL_USERS.find(x => x.uid === uid) || {};
-  try {
-    await db.collection('projects').doc(memProj.id).collection('members').doc(uid).set({
-      uid, email: u.email || '',
-      displayName:    u.displayName || u.username || name,
-      supervisorName: name,
-      addedAt: new Date().toISOString(),
-      addedBy: (firebase.auth().currentUser || {}).email || ''
-    });
-    // memberUids บน doc โครงการ = ตัวที่ rules และหน้าเลือกโครงการใช้ — ต้องอัปเดตคู่กันเสมอ
-    await db.collection('projects').doc(memProj.id).update({
-      memberUids: firebase.firestore.FieldValue.arrayUnion(uid)
-    });
-    await rebuildSupervisors(memProj.id);
-    msg($('memberMsg'), '✅ แต่งตั้ง "' + name + '" เข้าโครงการแล้ว', 'ok');
-    $('mSupName').value = ''; $('mUser').value = '';
-    await renderMembers();
-    await load();
-  } catch (e) {
-    msg($('memberMsg'), 'แต่งตั้งไม่สำเร็จ: ' + e.message, 'err');
-  }
-});
-
-async function removeMember(uid) {
-  if (!memProj || !uid) return;
-  if (!confirm('ถอดบัญชีนี้ออกจากโครงการ?\n\nเขาจะไม่เห็นโครงการนี้อีก\nข้อมูลที่เก็บไว้แล้วยังอยู่ครบ (ไม่ถูกลบ)')) return;
-  try {
-    await db.collection('projects').doc(memProj.id).collection('members').doc(uid).delete();
-    await db.collection('projects').doc(memProj.id).update({
-      memberUids: firebase.firestore.FieldValue.arrayRemove(uid)
-    });
-    await rebuildSupervisors(memProj.id);
-    msg($('memberMsg'), 'ถอดออกจากโครงการแล้ว', 'ok');
-    await renderMembers();
-    await load();
-  } catch (e) {
-    msg($('memberMsg'), 'ถอดออกไม่สำเร็จ: ' + e.message, 'err');
   }
 }
 

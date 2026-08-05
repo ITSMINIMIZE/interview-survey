@@ -474,7 +474,7 @@ const App = {
           ${allSts.length > 0 ? `<button class="btn btn-ghost btn-sm" id="syncBtn" onclick="App.syncToCloud()">☁️ Sync</button>` : ''}
           ${isAdmin && allSts.length > 0 ? `<button class="btn btn-danger btn-sm" onclick="App.confirmClearAll()">🗑 ล้างข้อมูล</button>` : ''}
           <button class="btn btn-ghost btn-sm" id="pullBtn" onclick="App.pullFromCloud()">☁️ ดึงข้อมูล</button>
-          ${this._canManage() ? `<button class="btn btn-primary" onclick="App.openAddStation()">+ เพิ่มจุดสำรวจ</button>` : ''}
+          ${this._canManage() ? `<button class="btn btn-primary" onclick="App.goProjectTools()">🧰 จัดการจุดสำรวจ</button>` : ''}
         </div>
       </div>
 
@@ -482,9 +482,9 @@ const App = {
         <div class="empty">
           <span class="empty-icon">🚦</span>
           <h3>ยังไม่มีจุดสำรวจ</h3>
-          <p>${this._canManage() ? 'กดปุ่มด้านบนเพื่อเริ่มบันทึกข้อมูล หรือดึงข้อมูลจาก Firebase' : 'กด "ดึงข้อมูล" เพื่อโหลดจุดสำรวจที่ผู้ดูแลสร้างไว้'}</p>
+          <p>${this._canManage() ? 'สร้างจุดสำรวจได้ที่หน้า Dashboard ของโครงการ → เครื่องมือโครงการ → จุดสำรวจ' : 'กด "ดึงข้อมูล" เพื่อโหลดจุดสำรวจที่ผู้ดูแลสร้างไว้'}</p>
           <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-            ${this._canManage() ? `<button class="btn btn-primary" onclick="App.openAddStation()">+ เพิ่มจุดสำรวจแรก</button>` : ''}
+            ${this._canManage() ? `<button class="btn btn-primary" onclick="App.goProjectTools()">🧰 ไปเพิ่มจุดสำรวจ</button>` : ''}
             <button class="btn btn-ghost" id="pullBtn" onclick="App.pullFromCloud()">☁️ ดึงข้อมูลจาก Firebase</button>
           </div>
         </div>` :
@@ -869,6 +869,12 @@ const App = {
     if (!data.district)    errs.push('อำเภอ');
     if (!data.province)    errs.push('จังหวัด');
     return errs;
+  },
+
+  // จัดการจุดสำรวจย้ายไปอยู่ที่ Dashboard ของโครงการแล้ว (เป็นงานตั้งค่า ไม่ใช่งานหน้างาน)
+  goProjectTools() {
+    const pid = Project.id();
+    location.href = '../Dashboard/' + (pid ? '?project=' + encodeURIComponent(pid) : '');
   },
 
   openAddStation() {
