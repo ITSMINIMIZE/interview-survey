@@ -11,7 +11,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 # ไฟล์ที่ใช้ร่วมกันทั้ง Home และ Roadside
-BOTH_APPS="auth-role.js place-service.js zone-service.js project-service.js"
+BOTH_APPS="auth-role.js place-service.js zone-service.js project-service.js preview-mode.js"
 for f in $BOTH_APPS; do
   cp "Home/js/$f" "Roadside/js/$f"
   echo "  ✓ Roadside/js/$f"

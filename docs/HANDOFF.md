@@ -191,3 +191,36 @@ service cloud.firestore { match /databases/{database}/documents {
 - **delete-confirm** — ปุ่มล้างข้อมูล local ต้องพิมพ์ "delete" ก่อนกดได้ (ทั้ง Roadside + Home)
 
 **Schema สำคัญ (ปัจจุบัน):** Home = **nested** · Roadside = nested (stations/interviews) · places = flat · local DB (data.js) เก็บ members/trips เป็น array ฝังใน household เสมอ (ต่างกันแค่ตอน sync ขึ้น/ลง Firestore)
+
+---
+
+## 13. โหมดดูตัวอย่างแบบสอบถาม (observe) — `{Home,Roadside}/js/preview-mode.js`
+
+เปิดด้วย `?project=<pid>&preview=1` · ไม่ต้อง login ไม่ต้องมีลิงก์ผู้สำรวจ
+ไว้ให้ **กรม / ผู้ว่าจ้าง** เปิดดูองค์ประกอบของแบบสอบถามครบทุกหน้า
+ออกลิงก์ได้จาก Dashboard → ปุ่ม 🔗 ลิงก์แบบสอบถาม → กล่อง "👁 ลิงก์ดูตัวอย่าง"
+(ลิงก์เป็นที่อยู่ตายตัวของโครงการ ไม่มี token ไม่ต้องออกใหม่ ปิดไม่ได้ — เพราะไม่มีอะไรให้ปิด)
+
+**สิ่งที่โหมดนี้ทำ**
+- ข้ามหน้า login → เข้าแอปเป็นบทบาทสมมติ · สลับดูได้ทั้ง ผู้สำรวจ / ผู้ควบคุม / ผู้ดูแลระบบ
+- มีข้อมูลสมมติให้ดู (สร้างจาก `OPT` ที่ใช้อยู่จริง → โครงการที่ตั้งตัวเลือกเอง ตัวอย่างก็เป็นชุดนั้น)
+- แถบล่างจอ = ปุ่มกระโดดไปทุกหน้า (ฟอร์ม/wizard/ถังขยะ) โดยไม่ต้องรู้ว่าต้องกดอะไร
+
+**สิ่งที่โหมดนี้ห้ามทำ — ทั้งหมด patch ไว้ใน `Preview.install()`**
+
+| ทาง | วิธีปิด |
+|---|---|
+| IndexedDB ของแอป | `IDBStore.get/set/del` → no-op · `DB.init` คืนข้อมูลสมมติใน RAM |
+| Firestore (ข้อมูลสำรวจ) | `FB._pushDoc` → no-op · `syncAll` throw · `pullAll/_pullByField` → 0 |
+| Firestore (คลังสถานที่) | `PlaceService.savePlace` → no-op (เลือกหมุดบนแผนที่ = ระบบจำสถานที่ให้อัตโนมัติ) |
+| localStorage | บล็อก `setItem/removeItem` ทุก key **ยกเว้น** `firebase*` / `firestore*` (SDK ต้องใช้) |
+| Service Worker | ไม่ register (ดู `index.html` ทั้ง 2 แอป) |
+
+⚠️ **เหตุผลที่ต้องบล็อกถึงระดับ localStorage:** เครื่องเดียวอาจเป็นเครื่องผู้สำรวจตัวจริงที่ทำงานค้างอยู่
+ถ้าปล่อยให้เขียน โหมดดูตัวอย่างจะทับ `_is_project_id` / ชื่อผู้สำรวจ / cache สถานที่ ของงานจริง
+ตรวจแล้วว่าเปิดโหมดนี้จนจบ localStorage เหลือแต่ key ของ Firebase SDK เท่านั้น
+
+⚠️ สิ่งเดียวที่อ่านของจริงคือ **ตัวเลือกของแบบสอบถาม** (`config/options`) เพราะนั่นคือของที่ผู้ตรวจมาดู ·
+รายชื่อผู้ควบคุมใช้ชื่อสมมติ ไม่เปิดชื่อทีมจริงให้คนนอก
+
+**แก้ไฟล์นี้แล้ว** → `./sync-shared.sh` (อยู่ในลิสต์ `BOTH_APPS` แล้ว) + bump `CACHE_VERSION` ทั้ง 2 sw.js

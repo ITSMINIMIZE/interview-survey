@@ -32,6 +32,14 @@ const SurveyLinks = {
     return `${base}/${app.path}/?project=${encodeURIComponent(link.projectId)}&k=${encodeURIComponent(link.token)}`;
   },
 
+  // ลิงก์ดูตัวอย่าง — ไม่มี token เพราะไม่ได้ให้เก็บข้อมูล (โหมดนี้เขียนอะไรไม่ได้เลย)
+  // ไม่ต้องออกใหม่ทีละใบ ไม่ต้องปิด ไม่มีวันหมดอายุ — เป็นแค่ที่อยู่ตายตัวของโครงการ
+  previewUrl(app) {
+    const base = new URL('../', location.href).href.replace(/\/$/, '');
+    const a    = this.APPS[app] || this.APPS.home;
+    return `${base}/${a.path}/?project=${encodeURIComponent(Project.id())}&preview=1`;
+  },
+
   // ---------- modal ----------
   _build() {
     if (this._built) return;
@@ -55,8 +63,17 @@ const SurveyLinks = {
           <b style="color:#ff8a80">ใครถือลิงก์ก็ส่งข้อมูลได้</b> — ปิดลิงก์ได้ทุกเมื่อจากรายการด้านล่าง
         </div>
 
+        <div style="background:rgba(255,214,10,.06);border:1px solid rgba(255,214,10,.28);border-radius:12px;padding:18px;margin-bottom:20px">
+          <div style="font-size:14px;font-weight:700;color:#ffd60a;margin-bottom:6px">👁 ลิงก์ดูตัวอย่าง (สำหรับผู้ตรวจ)</div>
+          <div style="font-size:12.5px;color:#98989d;line-height:1.75;margin-bottom:14px">
+            เปิดดูได้ทุกหน้าโดยไม่ต้องมีบัญชี · มีข้อมูลสมมติให้ดู · สลับมุมมองผู้สำรวจ/ผู้ควบคุม/ผู้ดูแลได้<br>
+            <b style="color:#63e6a0">กรอกอะไรลงไปก็ไม่ถูกบันทึกและไม่ขึ้นระบบ</b> — ใช้ลิงก์เดิมได้ตลอด ไม่ต้องออกใหม่
+          </div>
+          <div id="slPreview" style="display:grid;gap:10px"></div>
+        </div>
+
         <div style="background:#1c1c1e;border:1px solid #3a3a3c;border-radius:12px;padding:18px;margin-bottom:20px">
-          <div style="font-size:14px;font-weight:700;color:#f5f5f7;margin-bottom:14px">ออกลิงก์ใหม่</div>
+          <div style="font-size:14px;font-weight:700;color:#f5f5f7;margin-bottom:14px">ออกลิงก์ใหม่ (สำหรับผู้สำรวจ — เก็บข้อมูลจริง)</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="slFormGrid">
             <div>
               <label style="display:block;font-size:12px;color:#98989d;font-weight:600;margin-bottom:5px">แบบสอบถาม *</label>
@@ -116,7 +133,45 @@ const SurveyLinks = {
     if (a.roadside !== false) opts.push('<option value="roadside">🚦 Roadside Interview — สัมภาษณ์ริมทาง</option>');
     sel.innerHTML = opts.join('');
     document.getElementById('slCreate').disabled = !opts.length;
+    this._renderPreview(a);
     await Promise.all([this._loadSupervisors(), this.refresh()]);
+  },
+
+  // ลิงก์ดูตัวอย่าง — ขึ้นเฉพาะแบบสอบถามที่โครงการนี้เปิดใช้ (เหมือนลิงก์จริง)
+  _renderPreview(apps) {
+    const box = document.getElementById('slPreview');
+    if (!box) return;
+    const rows = ['home', 'roadside']
+      .filter(k => apps[k] !== false)
+      .map(k => {
+        const a   = this.APPS[k];
+        const url = this.previewUrl(k);
+        return `<div style="background:#1c1c1e;border:1px solid #3a3a3c;border-radius:10px;padding:13px 15px">
+          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
+            <div style="font-size:14px;font-weight:700;color:#f5f5f7">${a.icon} ${this._esc(a.name)}</div>
+            <div style="display:flex;gap:7px;flex-wrap:wrap">
+              <button data-pvcopy="${k}" style="background:#3a3a3c;border:1px solid #48484a;color:#d1d1d6;font-family:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer">📋 คัดลอก</button>
+              <a href="${this._esc(url)}" target="_blank" rel="noopener" style="background:rgba(255,214,10,.15);border:1px solid rgba(255,214,10,.32);color:#ffd60a;font-family:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer;text-decoration:none">↗ เปิดดู</a>
+            </div>
+          </div>
+          <div style="margin-top:9px;font-size:11.5px;color:#8e8e93;word-break:break-all;background:#2c2c2e;border:1px solid #3a3a3c;border-radius:8px;padding:8px 11px">${this._esc(url)}</div>
+        </div>`;
+      });
+    box.innerHTML = rows.join('') ||
+      '<div style="color:#8e8e93;font-size:13px">โครงการนี้ยังไม่ได้เปิดใช้แบบสอบถามใด</div>';
+    box.querySelectorAll('[data-pvcopy]').forEach(b =>
+      b.onclick = () => this._copyText(this.previewUrl(b.dataset.pvcopy), b));
+  },
+
+  async _copyText(url, btn) {
+    try {
+      await navigator.clipboard.writeText(url);
+      const old = btn.textContent;
+      btn.textContent = '✓ คัดลอกแล้ว';
+      setTimeout(() => { btn.textContent = old; }, 1600);
+    } catch (_) {
+      prompt('คัดลอกลิงก์นี้:', url);   // clipboard ถูกบล็อก (บางเบราว์เซอร์ต้อง https)
+    }
   },
 
   close() { const m = document.getElementById('slModal'); if (m) m.style.display = 'none'; },

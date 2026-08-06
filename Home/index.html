@@ -47,6 +47,8 @@
   <script src="js/place-service.js"></script>
   <script src="js/map-leaflet.js"></script>
   <script src="js/firebase.js"></script>
+  <!-- โหมดดูตัวอย่าง (?preview=1) — ต้องมาหลัง app/data/firebase เพราะทำงานด้วยการ patch ของพวกนั้น -->
+  <script src="js/preview-mode.js"></script>
 
   <script>
     // ===== ประตูทางเข้าแบบสอบถาม =====
@@ -55,6 +57,7 @@
     //    ตรวจแบบไม่บล็อกการบูต — ออฟไลน์ต้องยังกรอกงานต่อได้
     (function () {
       if (!Project.id()) { location.replace('../index.html'); return; }
+      if (Preview.active()) return;   // ดูตัวอย่าง = ไม่ผ่านลิงก์ผู้สำรวจ ไม่ต้องตรวจ token
       window.addEventListener('load', function () {
         if (!FB.db) return;
         SurveyLink.check(FB.db).then(function (r) {
@@ -69,7 +72,8 @@
   </script>
 
   <script>
-    if ('serviceWorker' in navigator) {
+    // ไม่ติดตั้ง service worker ตอนดูตัวอย่าง — เครื่องผู้ตรวจไม่ได้จะเอาไปใช้ offline
+    if ('serviceWorker' in navigator && !Preview.active()) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').catch(() => {});
       });
