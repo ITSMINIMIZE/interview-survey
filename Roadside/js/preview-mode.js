@@ -134,9 +134,9 @@ const Preview = {
     if (tb) tb.style.display = 'none';
     const panel = document.getElementById('pvPanel');
     if (panel) panel.remove();
-    document.body.style.paddingRight = '';
     const app = document.getElementById('app');
     if (!app) return;
+    app.style.paddingRight = '';
     app.innerHTML = `
       <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;
                   justify-content:center;padding:24px;text-align:center">
@@ -260,8 +260,10 @@ const Preview = {
     const el = document.getElementById('pvPanel');
     if (!el) return;
 
-    // แผงลอยทับเนื้อหาฝั่งขวาได้ (ปุ่มแถวบนสุดของบางหน้ายาวเลยไปถึงขอบ) → หลบให้ด้วยการหด body
-    document.body.style.paddingRight = this._min ? '' : '238px';
+    // แผงลอยทับเนื้อหาฝั่งขวาได้ (ปุ่มแถวบนสุดของบางหน้ายาวไปถึงขอบ) → หลบให้ด้วยการหดเฉพาะ <main>
+    // ⚠️ หด body ไม่ได้ — topbar อยู่ใน body ด้วย แถบหัวจะขาดเป็นบั้งไม่เต็มจอ
+    const main = document.getElementById('app');
+    if (main) main.style.paddingRight = this._min ? '' : '238px';
 
     if (this._min) {
       el.setAttribute('style', this.SHELL + 'bottom:16px');
