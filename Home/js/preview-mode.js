@@ -3,8 +3,8 @@
 //   .../Home/?project=<pid>&preview=1
 //   .../Roadside/?project=<pid>&preview=1
 //
-// ไว้ให้ผู้ตรวจ (กรม / ผู้ว่าจ้าง) เปิดดูว่าแบบสอบถามหน้าตาเป็นยังไง มีองค์ประกอบอะไรบ้าง
-// โดยไม่ต้องมีบัญชี ไม่ต้องขอลิงก์ผู้สำรวจ และต้องไม่ทิ้งขยะไว้ในระบบ
+// เปิดให้ **เฉพาะผู้ดูแลระบบ (admin)** — ให้ admin เปิดกางให้กรม/ผู้ว่าจ้างดูองค์ประกอบของแบบสอบถาม
+// ครบทุกหน้า โดยไม่ต้องไปยุ่งกับข้อมูลจริงและไม่ทิ้งขยะไว้ในระบบ
 //
 // หลักการ 3 ข้อ:
 //   1) ไม่เขียนอะไรทั้งสิ้น — patch DB.save / IDBStore / FB._pushDoc ให้เป็น no-op
@@ -12,15 +12,15 @@
 //      (สำคัญมาก: เครื่องเดียวอาจถูกใช้สำรวจจริงด้วย ห้ามให้ตัวอย่างปนเข้า IndexedDB ของโครงการ)
 //   2) ไม่แตะข้อมูลจริง — ไม่ pull จาก cloud, ไม่อ่านรายชื่อผู้ควบคุมจริง (ใช้ชื่อสมมติ)
 //      สิ่งเดียวที่อ่านของจริงคือ "ตัวเลือกของแบบสอบถาม" ของโครงการนั้น เพราะนั่นคือสิ่งที่เขามาตรวจ
-//   3) ไม่ต้อง login — ข้ามหน้าเลือกบทบาทไปเลย แล้วให้สลับดูได้ครบทั้ง 3 มุมมอง
+//   3) ต้อง login เป็น admin ก่อนเสมอ — ลิงก์หลุดไปถึงใครก็เปิดไม่ได้ถ้าไม่มีสิทธิ์
 //
 // ⚠️ ไฟล์นี้ถูก copy ให้เหมือนกันทั้ง Home/js/ และ Roadside/js/ (แก้ที่ Home แล้วรัน ./sync-shared.sh)
 //    ตัวไฟล์รู้เองว่าอยู่แอปไหนจาก DB.KEY — ข้อมูลตัวอย่างจึงต่างกันได้ในไฟล์เดียว
 const Preview = {
-  _on:   null,
-  _role: 'surveyor',
-  _min:  false,  // แถบถูกพับเก็บอยู่ไหม
-  _ids:  {},     // id ของข้อมูลตัวอย่าง — ปุ่มลัดใช้กระโดดเข้าหน้าลึกๆ
+  _on:      null,
+  _min:     false,  // แผงถูกพับเก็บอยู่ไหม
+  _entered: false,  // ผ่านประตูเข้ามาแล้ว (กันทำงานซ้ำเมื่อ auth event ยิงหลายครั้ง)
+  _ids:     {},     // id ของข้อมูลตัวอย่าง — ปุ่มลัดใช้กระโดดเข้าหน้าลึกๆ
 
   // ---------- ตรวจว่าอยู่ในโหมดนี้ไหม ----------
   active() {
@@ -88,78 +88,102 @@ const Preview = {
       Supervisors.list = () => [{ key: 'preview', name: Preview.TEAM }];
     }
 
-    // 6) บูตเอง — ข้ามหน้า login ทั้งหมด
-    App._bootHandled = true;         // กัน onAuthStateChanged ของ App เข้ามาแย่ง
-    App.init = async () => { await DB.init(); Preview._enter(); };
+    // 6) ประตู — โหมดนี้เปิดให้เฉพาะ admin เท่านั้น
+    //    ปิดทางเข้าแบบ "ผู้สำรวจ" ทิ้งไปเลย (หน้าเลือกบทบาทเดิมมีปุ่มนั้นอยู่)
+    App.init = async () => { await DB.init(); Preview._boot(); };
+    App._showLoginGate = () => Preview._gate();
+
+    // ทุกทางที่เข้าแอปได้ต้องผ่านตรงนี้ — รวมทางที่ผู้ใช้กด login เองจากหน้าประตู
+    const enterApp = App._enterApp.bind(App);
+    App._enterApp = function (...a) {
+      if (App._role !== 'admin') { Preview._gate(Preview.DENY); return; }
+      enterApp(...a);
+      Preview._afterEnter();
+    };
+
     App.logout      = () => Preview.exit();
     App._silentPull = async () => {};
     App.pullFromCloud = () => App.toast('โหมดดูตัวอย่าง — ไม่ดึงข้อมูลจริงมาแสดง', 'error');
     App.syncToCloud   = async () => App.toast('โหมดดูตัวอย่าง — ข้อมูลจะไม่ถูกบันทึก', 'error');
   },
 
-  // ---------- เข้าแอป ----------
-  _enter() {
-    this.setRole(this._role, true);
-    this._mountBar();
+  DENY: 'บัญชีนี้ไม่ใช่ผู้ดูแลระบบ — โหมดดูตัวอย่างเปิดให้เฉพาะผู้ดูแลระบบ',
 
-    // ตัวเลือกจริงของโครงการ (ประเภทรถ / วัตถุประสงค์ ที่โครงการนี้ตั้งไว้) — คือของที่เขามาตรวจ
-    // มาช้ากว่าข้อมูลตัวอย่างที่สร้างไว้แล้ว → สร้างใหม่ให้ตรงชุดตัวเลือก แล้ววาดหน้าใหม่
-    //
-    // ⚠️ ต้องรอ token ก่อน — ยิงอ่านตั้งแต่ยังไม่มี anonymous user จะโดนปฏิเสธเงียบๆ
-    //    แล้วได้ชื่อโครงการ/ตัวเลือกเป็นค่า default โดยไม่มี error ให้เห็น
-    this._whenSignedIn(() => {
-      Project.load(FB.db).then(m => {
-        this._paintProjectName();
-        // โครงการที่เก็บแค่ริมทาง ไม่ควรมีใครเปิดตัวอย่างของ Home ได้ (พิมพ์ URL เอง/ลิงก์เก่า)
-        // — ผู้ตรวจจะเข้าใจผิดว่าโครงการนี้เก็บด้วย
-        const apps = (m && m.apps) || {};
-        if (apps[this.app()] === false) {
-          SurveyLink.block(`โครงการ "${(m && m.name) || Project.id()}" ไม่ได้เปิดใช้แบบสอบถามนี้`);
-        }
-      }).catch(() => {});
-      Project.loadOptions(FB.db, this.app(), OPT)
-        .then(d => { if (d) { DB._data = this.demoData(); App.render(); } })
-        .catch(() => {});
+  // ---------- ประตู: เฉพาะผู้ดูแลระบบ ----------
+  _boot() {
+    this._gate(null, true);
+    if (typeof FB === 'undefined' || !FB.auth) { this._gate(); return; }
+    FB.auth.onAuthStateChanged(async u => {
+      if (this._entered) return;
+      // anonymous = token ที่ FB.init เซ็นให้อัตโนมัติ ไม่ใช่การ login → ยังไม่ผ่าน
+      if (!u || u.isAnonymous) { this._gate(); return; }
+      let r = null;
+      try { r = await Role.resolve(u, FB.db, true); } catch (_) {}
+      if (r && r.role === 'admin') {
+        App._role = 'admin';
+        App._adminUsername = r.displayName || r.username || '';
+        App._enterApp();
+      } else {
+        this._gate(this.DENY);
+      }
     });
   },
 
-  _whenSignedIn(fn) {
-    if (typeof FB === 'undefined' || !FB.db || !FB.auth) return;
-    if (FB.auth.currentUser) { fn(); return; }
-    const stop = FB.auth.onAuthStateChanged(u => { if (u) { stop(); fn(); } });
+  _gate(err, busy) {
+    const tb = document.querySelector('.topbar');
+    if (tb) tb.style.display = 'none';
+    const panel = document.getElementById('pvPanel');
+    if (panel) panel.remove();
+    document.body.style.paddingRight = '';
+    const app = document.getElementById('app');
+    if (!app) return;
+    app.innerHTML = `
+      <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;
+                  justify-content:center;padding:24px;text-align:center">
+        <div style="font-size:46px;margin-bottom:12px">👁</div>
+        <div style="font-size:21px;font-weight:700;color:var(--gray-800)">โหมดดูตัวอย่างแบบสอบถาม</div>
+        <div style="font-size:13px;color:var(--gray-500);margin-top:7px;max-width:330px;line-height:1.8">
+          เปิดดูได้ทุกหน้าโดยไม่กระทบข้อมูลจริง<br><b>เฉพาะผู้ดูแลระบบเท่านั้น</b>
+        </div>
+        ${err ? `<div style="margin-top:16px;padding:10px 15px;border-radius:9px;max-width:330px;
+          background:#fee2e2;color:#b91c1c;font-size:13px;line-height:1.7">${App.esc(err)}</div>` : ''}
+        <div style="margin-top:22px;width:100%;max-width:290px">
+          ${busy
+            ? `<div style="color:var(--gray-400);font-size:14px">กำลังตรวจสิทธิ์…</div>`
+            : `<button class="btn btn-primary" style="padding:14px;font-size:15px;width:100%"
+                 onclick="App.loginAsAdmin()">🔐 เข้าสู่ระบบผู้ดูแลระบบ</button>`}
+        </div>
+      </div>`;
+  },
+
+  // ---------- เข้าแอปแล้ว ----------
+  _afterEnter() {
+    App._surveyorName = this.SURVEYOR;   // ชื่อที่ติดกับข้อมูลตัวอย่าง
+    App._team         = '';
+    // "เมนูหลัก" พาออกจากโหมดนี้ไปหน้าระบบ — ต้องกลับมาเปิดลิงก์ใหม่ ตัดออกให้เหลือทางเดียว
+    document.querySelectorAll('#topbarRight .tb-link, #topbarRight .tb-sep').forEach(el => el.remove());
+    this._mountPanel();
+
+    if (this._entered) return;
+    this._entered = true;
+
+    // ตัวเลือกจริงของโครงการ (ประเภทรถ / วัตถุประสงค์ ที่โครงการนี้ตั้งไว้) — คือของที่เขามาตรวจ
+    // มาช้ากว่าข้อมูลตัวอย่างที่สร้างไว้แล้ว → สร้างใหม่ให้ตรงชุดตัวเลือก แล้ววาดหน้าใหม่
+    Project.load(FB.db).then(m => {
+      this._paintProjectName();
+      // โครงการที่เก็บแค่ริมทาง ไม่ควรเปิดตัวอย่างของ Home ได้ (พิมพ์ URL เอง/ลิงก์เก่า)
+      // — ผู้ตรวจจะเข้าใจผิดว่าโครงการนี้เก็บด้วย
+      const apps = (m && m.apps) || {};
+      if (apps[this.app()] === false) {
+        SurveyLink.block(`โครงการ "${(m && m.name) || Project.id()}" ไม่ได้เปิดใช้แบบสอบถามนี้`);
+      }
+    }).catch(() => {});
+    Project.loadOptions(FB.db, this.app(), OPT)
+      .then(d => { if (d) { DB._data = this.demoData(); App.render(); } })
+      .catch(() => {});
   },
 
   exit() { location.href = '../index.html'; },
-
-  // ---------- สลับมุมมองบทบาท ----------
-  // แบบสอบถามหน้าตาไม่เหมือนกันในแต่ละบทบาท (ผู้สำรวจเห็นเฉพาะของตัวเอง ผู้ดูแลเห็นถังขยะ ฯลฯ)
-  // ผู้ตรวจควรได้เห็นครบทั้งสามมุม ไม่ใช่มุมเดียว
-  setRole(role, quiet) {
-    this._role = role;
-    App._surveyorName  = this.SURVEYOR;
-    App._team          = '';
-    App._adminUsername = '';
-    if (role === 'surveyor') {
-      App._role = 'surveyor';
-    } else if (role === 'staff') {
-      App._role = 'staff';
-      App._team = this.TEAM;
-      App._adminUsername = 'ผู้ควบคุม (ตัวอย่าง)';
-    } else {
-      App._role = 'admin';
-      App._adminUsername = 'ผู้ดูแลระบบ (ตัวอย่าง)';
-    }
-    App.closeModal();
-    App._enterApp();
-    // "เมนูหลัก" พาไปหน้า login ของระบบ — ผู้ตรวจไม่มีบัญชี กดไปก็ตัน เอาออก
-    document.querySelectorAll('#topbarRight .tb-link, #topbarRight .tb-sep').forEach(el => el.remove());
-    this._paintBar();
-    if (!quiet) App.toast('มุมมอง: ' + this._roleLabel(role), 'success');
-  },
-
-  _roleLabel(r) {
-    return r === 'surveyor' ? 'ผู้สำรวจ' : r === 'staff' ? 'ผู้ควบคุม' : 'ผู้ดูแลระบบ';
-  },
 
   // เริ่มตัวอย่างใหม่ — กรอกมั่วไว้แล้วอยากได้ของสะอาดกลับมา
   reset() {
@@ -170,35 +194,29 @@ const Preview = {
   },
 
   // ---------- ปุ่มลัดไปแต่ละหน้า ----------
-  // จุดขายของโหมดนี้: ผู้ตรวจไม่ต้องรู้ว่าต้องกดอะไรถึงจะเห็นหน้าลึกๆ กดจากแถบล่างได้เลย
+  // จุดขายของโหมดนี้: ไม่ต้องรู้ว่าต้องกดอะไรถึงจะเห็นหน้าลึกๆ กดจากแผงได้เลย
   _pages() {
     const id = this._ids;
     if (this.app() === 'roadside') {
       return [
-        { t: 'หน้าหลัก',            go: () => App.navigate('home') },
-        { t: 'ฟอร์มเพิ่มจุดสำรวจ',  go: () => { this._need('staff'); App.navigate('home'); App.openAddStation(); } },
-        { t: 'หน้าจุดสำรวจ',        go: () => App.navigate('station', id.st) },
-        { t: 'สัมภาษณ์ทีละคำถาม',   go: () => { App.navigate('station', id.st); App.openWizard(); } },
-        { t: 'ฟอร์มเต็ม (แก้ไข)',   go: () => { App.navigate('station', id.st); App.openInterviewForm(id.iv); } },
-        { t: 'รายละเอียดที่บันทึก', go: () => App.navigate('interview', id.st, id.iv) },
-        { t: 'ถังขยะ',              go: () => { this._need('admin'); App.navigate('trash'); } }
+        { i: '📋', t: 'หน้าหลัก',            go: () => App.navigate('home') },
+        { i: '➕', t: 'ฟอร์มเพิ่มจุดสำรวจ',  go: () => { App.navigate('home'); App.openAddStation(); } },
+        { i: '🚦', t: 'หน้าจุดสำรวจ',        go: () => App.navigate('station', id.st) },
+        { i: '🧭', t: 'สัมภาษณ์ทีละคำถาม',   go: () => { App.navigate('station', id.st); App.openWizard(); } },
+        { i: '📝', t: 'ฟอร์มเต็ม (แก้ไข)',   go: () => { App.navigate('station', id.st); App.openInterviewForm(id.iv); } },
+        { i: '🔎', t: 'รายละเอียดที่บันทึก', go: () => App.navigate('interview', id.st, id.iv) },
+        { i: '🗑', t: 'ถังขยะ',              go: () => App.navigate('trash') }
       ];
     }
     return [
-      { t: 'หน้าหลัก',            go: () => App.navigate('home') },
-      { t: 'ฟอร์มเพิ่มครัวเรือน', go: () => { App.navigate('home'); App.openAddHousehold(); } },
-      { t: 'หน้าครัวเรือน',       go: () => App.navigate('household', id.hh) },
-      { t: 'ข้อมูลสมาชิก',        go: () => { App.navigate('member', id.hh, id.m); App.switchTab('info'); } },
-      { t: 'รายการเดินทาง',       go: () => { App.navigate('member', id.hh, id.m); App.switchTab('trips'); } },
-      { t: 'ฟอร์มการเดินทาง',     go: () => { App.navigate('member', id.hh, id.m); App.switchTab('trips'); App.openTripForm(id.t); } },
-      { t: 'ถังขยะ',              go: () => { this._need('admin'); App.navigate('trash'); } }
+      { i: '📋', t: 'หน้าหลัก',            go: () => App.navigate('home') },
+      { i: '➕', t: 'ฟอร์มเพิ่มครัวเรือน', go: () => { App.navigate('home'); App.openAddHousehold(); } },
+      { i: '🏠', t: 'หน้าครัวเรือน',       go: () => App.navigate('household', id.hh) },
+      { i: '👤', t: 'ข้อมูลสมาชิก',        go: () => { App.navigate('member', id.hh, id.m); App.switchTab('info'); } },
+      { i: '🚗', t: 'รายการเดินทาง',       go: () => { App.navigate('member', id.hh, id.m); App.switchTab('trips'); } },
+      { i: '📝', t: 'ฟอร์มการเดินทาง',     go: () => { App.navigate('member', id.hh, id.m); App.switchTab('trips'); App.openTripForm(id.t); } },
+      { i: '🗑', t: 'ถังขยะ',              go: () => App.navigate('trash') }
     ];
-  },
-
-  // บางหน้าเปิดได้เฉพาะบางบทบาท — สลับบทบาทให้เองแทนที่จะขึ้น "ไม่มีสิทธิ์" ใส่หน้าผู้ตรวจ
-  _need(role) {
-    const rank = { surveyor: 0, staff: 1, admin: 2 };
-    if (rank[this._role] < rank[role]) this.setRole(role, true);
   },
 
   jump(i) {
@@ -208,103 +226,83 @@ const Preview = {
     try { p.go(); } catch (e) { App.toast('เปิดหน้านี้ไม่ได้: ' + e.message, 'error'); }
   },
 
-  // ---------- แถบเครื่องมือล่างจอ ----------
-  _mountBar() {
-    if (document.getElementById('pvBar')) return;
+  // ---------- แผงลอยฝั่งขวา ----------
+  // จงใจทำเป็นแผงลอยไม่ใช่ส่วนหนึ่งของหน้า — ให้เห็นชัดว่านี่ "ของแถมของโหมดพิเศษ"
+  // ไม่ใช่เมนูของแบบสอบถามจริง (ผู้ตรวจจะได้ไม่นึกว่าผู้สำรวจก็เห็นแบบนี้)
+  SHELL: "position:fixed;right:14px;z-index:9999;font-family:'Sarabun',sans-serif;",
 
-    // แถบต้องอยู่บนสุดเสมอ (แม้ตอนเปิด popup) ผู้ตรวจจะได้กระโดดหน้าถัดไปได้ตลอด
-    // → ต้องดัน popup กับ toast ขึ้นมาไม่ให้มุดอยู่ใต้แถบ ไม่งั้นปุ่ม "บันทึก" ของฟอร์มจะถูกบัง
+  _mountPanel() {
+    if (document.getElementById('pvPanel')) return;
+
     const st = document.createElement('style');
     st.textContent =
-      '.modal-overlay { padding-bottom: 150px !important; }' +
-      '.toast-wrap { bottom: 150px !important; }' +
-      // ปุ่มทั้งหมดอยู่บรรทัดเดียวแล้วเลื่อนเอา — ปล่อยให้ตกบรรทัดจะกินจอมือถือไปครึ่งหนึ่ง
-      '#pvBar .pv-scroll { display:flex;align-items:center;gap:6px;flex-wrap:nowrap;' +
-      'overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:3px }' +
-      '#pvBar .pv-scroll::-webkit-scrollbar { height:4px }' +
-      '#pvBar .pv-scroll::-webkit-scrollbar-thumb { background:#48484a;border-radius:2px }' +
-      '@media (max-width:640px){ #pvBar .pv-note { display:none } }';
+      // toast เดิมอยู่มุมขวาล่าง ชนกับปุ่มตอนพับแผงพอดี — ยกขึ้นให้พ้น
+      '.toast-wrap { bottom: 74px !important; }' +
+      '#pvPanel .pv-item { display:flex;align-items:center;gap:9px;width:100%;text-align:left;' +
+      'background:#2c2c2e;border:1px solid #3a3a3c;color:#e5e5ea;font-family:inherit;font-size:12.5px;' +
+      'font-weight:600;padding:8px 10px;border-radius:9px;cursor:pointer;margin-bottom:5px }' +
+      '#pvPanel .pv-item:hover { background:#3a3a3c;border-color:#5a5a5e }' +
+      '#pvPanel .pv-mini { background:#3a3a3c;border:1px solid #48484a;color:#d1d1d6;font-family:inherit;' +
+      'font-size:11.5px;font-weight:600;padding:6px 9px;border-radius:8px;cursor:pointer;flex:1 }';
     document.head.appendChild(st);
 
-    const bar = document.createElement('div');
-    bar.id = 'pvBar';
-    bar.setAttribute('style',
-      'position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#1c1c1e;' +
-      'border-top:1px solid rgba(255,255,255,.12);color:#f5f5f7;' +
-      "font-family:'Sarabun',sans-serif;padding:10px 14px;box-shadow:0 -6px 22px rgba(0,0,0,.28)");
-    document.body.appendChild(bar);
-    this._paintBar();
-    // แถบสูงไม่เท่ากันตามจำนวนปุ่ม/ความกว้างจอ → วัดจริงทุกครั้ง ไม่ตั้งค่าตายตัว
-    addEventListener('resize', () => this._fitBar());
+    const el = document.createElement('div');
+    el.id = 'pvPanel';
+    document.body.appendChild(el);
+    // จอแคบ (มือถือ/แท็บเล็ต) แผงจะทับ popup ที่กลางจอ → เริ่มแบบพับไว้ก่อน กดเรียกเอา
+    this._min = innerWidth < 1000;
+    this._paintPanel();
   },
 
-  // เว้นที่ท้ายหน้าเท่าความสูงแถบ ไม่งั้นแถบบังปุ่มบรรทัดสุดท้าย
-  _fitBar() {
-    const bar = document.getElementById('pvBar');
-    if (bar) document.body.style.paddingBottom = (bar.offsetHeight + 22) + 'px';
-  },
+  toggleMin() { this._min = !this._min; this._paintPanel(); },
 
-  _btn(label, onclick, on) {
-    return `<button onclick="${onclick}" style="background:${on ? '#0a84ff' : '#3a3a3c'};
-      border:1px solid ${on ? '#0a84ff' : '#48484a'};color:${on ? '#fff' : '#d1d1d6'};
-      font-family:inherit;font-size:12px;font-weight:600;padding:6px 11px;border-radius:8px;
-      cursor:pointer;white-space:nowrap;flex:none">${label}</button>`;
-  },
+  _paintPanel() {
+    const el = document.getElementById('pvPanel');
+    if (!el) return;
 
-  // ย่อแถบ — บนมือถือฟอร์มบางหน้ายาว ผู้ตรวจควรพับแถบเก็บได้แล้วค่อยเรียกกลับมา
-  toggleMin() { this._min = !this._min; this._paintBar(); },
-
-  _paintBar() {
-    const bar = document.getElementById('pvBar');
-    if (!bar) return;
+    // แผงลอยทับเนื้อหาฝั่งขวาได้ (ปุ่มแถวบนสุดของบางหน้ายาวเลยไปถึงขอบ) → หลบให้ด้วยการหด body
+    document.body.style.paddingRight = this._min ? '' : '238px';
 
     if (this._min) {
-      bar.style.background = 'transparent';
-      bar.style.borderTop  = 'none';
-      bar.style.boxShadow  = 'none';
-      bar.style.pointerEvents = 'none';
-      bar.innerHTML = `<div style="display:flex;justify-content:flex-end;pointer-events:auto">
-        <button onclick="Preview.toggleMin()" style="background:#1c1c1e;border:1px solid rgba(255,214,10,.4);
-          color:#ffd60a;font-family:inherit;font-size:12px;font-weight:700;padding:8px 14px;border-radius:99px;
-          cursor:pointer;box-shadow:0 3px 14px rgba(0,0,0,.4)">👁 โหมดดูตัวอย่าง</button></div>`;
-      this._fitBar();
+      el.setAttribute('style', this.SHELL + 'bottom:16px');
+      el.innerHTML = `<button onclick="Preview.toggleMin()" title="โหมดดูตัวอย่าง — เปิดแผงเครื่องมือ"
+        style="background:#1c1c1e;border:1px solid rgba(255,214,10,.45);color:#ffd60a;font-family:inherit;
+        font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:99px;cursor:pointer;
+        box-shadow:0 4px 18px rgba(0,0,0,.45)">👁 โหมดดูตัวอย่าง</button>`;
       return;
     }
 
-    bar.style.background = '#1c1c1e';
-    bar.style.borderTop  = '1px solid rgba(255,255,255,.12)';
-    bar.style.boxShadow  = '0 -6px 22px rgba(0,0,0,.28)';
-    bar.style.pointerEvents = '';
-
-    const roles = [['surveyor','👤 ผู้สำรวจ'], ['staff','🧑‍💼 ผู้ควบคุม'], ['admin','🔐 ผู้ดูแลระบบ']];
-    const sep   = '<span style="width:1px;height:18px;background:#48484a;margin:0 5px;flex:none"></span>';
-    const cap   = t => `<span style="font-size:11.5px;color:#98989d;font-weight:600;flex:none">${t}</span>`;
-    bar.innerHTML = `
-      <div style="max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:7px">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap">
-          <div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-            <span style="font-size:12.5px;font-weight:700;color:#ffd60a">👁 โหมดดูตัวอย่าง</span>
-            <span style="font-size:11.5px;color:#8e8e93" id="pvProj"></span>
-            <span class="pv-note" style="font-size:11.5px;color:#8e8e93">· ข้อมูลที่กรอกจะไม่ถูกบันทึกและไม่ส่งขึ้นระบบ</span>
-          </div>
-          ${this._btn('↻ เริ่มใหม่', 'Preview.reset()')}
-          ${this._btn('▾ ย่อ', 'Preview.toggleMin()')}
-          ${this._btn('✕ ออก', 'Preview.exit()')}
-        </div>
-        <div class="pv-scroll">
-          ${cap('มุมมอง')}
-          ${roles.map(([r, l]) => this._btn(l, `Preview.setRole('${r}')`, this._role === r)).join('')}
-          ${sep}${cap('ไปที่หน้า')}
-          ${this._pages().map((p, i) => this._btn(p.t, `Preview.jump(${i})`)).join('')}
-        </div>
+    el.setAttribute('style', this.SHELL +
+      'top:78px;width:210px;background:#1c1c1e;border:1px solid rgba(255,214,10,.32);' +
+      'border-radius:14px;box-shadow:0 12px 34px rgba(0,0,0,.45);color:#f5f5f7;padding:12px;' +
+      'max-height:calc(100vh - 100px);overflow-y:auto');
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+        <span style="font-size:12.5px;font-weight:700;color:#ffd60a;flex:1">👁 โหมดดูตัวอย่าง</span>
+        <button onclick="Preview.toggleMin()" title="พับแผง"
+          style="background:none;border:none;color:#8e8e93;font-family:inherit;font-size:15px;
+          line-height:1;padding:2px 4px;cursor:pointer">–</button>
+      </div>
+      <div id="pvProj" style="font-size:11px;color:#8e8e93;line-height:1.55"></div>
+      <div style="font-size:11px;color:#63e6a0;line-height:1.55;margin-bottom:11px">
+        ข้อมูลที่กรอกไม่ถูกบันทึกและไม่ขึ้นระบบ
+      </div>
+      <div style="font-size:10.5px;color:#98989d;font-weight:700;letter-spacing:.4px;margin-bottom:6px">
+        ไปที่หน้า
+      </div>
+      ${this._pages().map((p, i) =>
+        `<button class="pv-item" onclick="Preview.jump(${i})"><span>${p.i}</span><span>${p.t}</span></button>`
+      ).join('')}
+      <div style="display:flex;gap:6px;margin-top:9px;padding-top:10px;border-top:1px solid #3a3a3c">
+        <button class="pv-mini" onclick="Preview.reset()">↻ เริ่มใหม่</button>
+        <button class="pv-mini" onclick="Preview.exit()">✕ ออก</button>
       </div>`;
     this._paintProjectName();
-    this._fitBar();
   },
 
   _paintProjectName() {
     const el = document.getElementById('pvProj');
-    if (el) el.textContent = '· ' + ((Project.meta && Project.meta.name) || Project.id() || '');
+    if (el) el.textContent = (Project.meta && Project.meta.name) || Project.id() || '';
   },
 
   // ---------- ข้อมูลตัวอย่าง ----------

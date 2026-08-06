@@ -64,9 +64,9 @@ const SurveyLinks = {
         </div>
 
         <div style="background:rgba(255,214,10,.06);border:1px solid rgba(255,214,10,.28);border-radius:12px;padding:18px;margin-bottom:20px">
-          <div style="font-size:14px;font-weight:700;color:#ffd60a;margin-bottom:6px">👁 ลิงก์ดูตัวอย่าง (สำหรับผู้ตรวจ)</div>
+          <div style="font-size:14px;font-weight:700;color:#ffd60a;margin-bottom:6px">👁 ลิงก์ดูตัวอย่าง (เฉพาะผู้ดูแลระบบ)</div>
           <div style="font-size:12.5px;color:#98989d;line-height:1.75;margin-bottom:14px">
-            เปิดดูได้ทุกหน้าโดยไม่ต้องมีบัญชี · มีข้อมูลสมมติให้ดู · สลับมุมมองผู้สำรวจ/ผู้ควบคุม/ผู้ดูแลได้<br>
+            ต้องเข้าสู่ระบบเป็นผู้ดูแลระบบก่อนถึงเปิดได้ · เปิดดูได้ครบทุกหน้าพร้อมข้อมูลสมมติ<br>
             <b style="color:#63e6a0">กรอกอะไรลงไปก็ไม่ถูกบันทึกและไม่ขึ้นระบบ</b> — ใช้ลิงก์เดิมได้ตลอด ไม่ต้องออกใหม่
           </div>
           <div id="slPreview" style="display:grid;gap:10px"></div>

@@ -210,9 +210,11 @@ const App = {
     document.querySelector('.topbar').style.display = '';
     const right = document.getElementById('topbarRight');
     if (right) {
+      // ⚠️ ผู้สำรวจไม่มีลิงก์ "เมนูหลัก" — เขาเข้ามาด้วยลิงก์ที่ได้รับ ไม่มีบัญชี
+      //    เผลอกดแล้วจะไปโผล่หน้า login ของระบบ แล้วกลับเข้าแบบสอบถามเองไม่ได้
       right.outerHTML = `<div id="topbarRight" class="tb-right">
-        <a class="tb-link" href="../index.html">◈ เมนูหลัก</a>
-        <span class="tb-sep">|</span>
+        ${this._canManage() ? `<a class="tb-link" href="../index.html">◈ เมนูหลัก</a>
+        <span class="tb-sep">|</span>` : ''}
         <span class="tb-user">
           ${this._isAdmin() ? '🔐' : this._isStaff() ? '🧑‍💼' : '👤'} ${this.esc(this._canManage() ? this._adminUsername : this._surveyorName)}${this._isStaff() ? ' · ผู้ควบคุม' : ''}
         </span>
